@@ -1,13 +1,18 @@
 # gff2parquet
 
-Convert GTF annotation files to Apache Parquet format for efficient genomics workflows.
+Parse and transform Gene Transfer Format (GTF) annotation files to Apache Parquet format for more efficient and powerful downstream analysis.
+
+## Motivation
+
+I heavily use the pyranges1 library during my day-to-day analysis when working with transcriptome annotations and intervals. Loading a full GTF file into memory is fairly time intensive (~ 1 min), mainly due to the requirement to perform complex parsing of the attribute field to extract key-value pairs, which is inconvenient in interactive/exploratory analysis. I also regularly find myself only needing a subset of the intervals and metadata for analysis (e.g. exon intervals, protein coding genes), which is currently only possible by first reading and parsing the complete GTF file into a pyranges object (pandas dataframe) into memory before subsetting.
 
 ## Features
 
-- **One-time parsing**: Parse GTF once, read Parquet many times
-- **Predicate pushdown**: Efficient filtered reads by chromosome, feature type, etc.
-- **Columnar storage**: Compression and selective column loading
-- **Optimized dtypes**: Categorical columns for memory efficiency
+- **One-time parsing**: Parse the key-value pairs from the GTF attribute field into individual columns once for a given reference file, speedily read Parquet many times
+- **Load what you need**: Leverage predicate pushdown to pre-filter for intervals of interest (e.g. chromosome, strand, exon/CDS entries etc.) and load only the columns (e.g. attribute keys) you need for analysis
+- **Optimized dtypes**: Efficiently encode datatypes, reducing in-memory object size and avoiding per-run inference
+- **Compatible with pyranges1**: import directly as a pyranges1 object for downstream analysis, relying on the same core dependencies (pandas, pyarrow) (TODO!)
+- **Reduced disk space usage with Parquet vs uncompressed/gzipped TSV**
 
 ## Installation
 
@@ -81,10 +86,10 @@ pytest tests/test_convert.py::TestRoundtrip::test_roundtrip
 
 The benchmark script compares conversion time, file size, read performance, and memory usage between GTF and Parquet formats.
 
-### Example: GENCODE v40 chr2 Subset
+### Example: GENCODE v40 chr2 & chr20-22 Subset
 
 ```bash
-# Create a chr2 subset for testing
+# Create a smaller subset of multiple chromosomes for testing
 grep 'chr2' gencode.v40.annotation.sorted.gtf > gencode.v40.chr2s.annotation.sorted.gtf
 
 # Run benchmark with filtered reads
