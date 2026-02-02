@@ -79,10 +79,62 @@ pytest tests/test_convert.py::TestRoundtrip::test_roundtrip
 
 ## Benchmarking
 
+The benchmark script compares conversion time, file size, read performance, and memory usage between GTF and Parquet formats.
+
+### Example: GENCODE v40 chr2 Subset
+
 ```bash
-# Run benchmarks with a GTF file
-python benchmarks/benchmark.py /path/to/gencode.v44.annotation.gtf
+# Create a chr2 subset for testing
+grep 'chr2' gencode.v40.annotation.sorted.gtf > gencode.v40.chr2s.annotation.sorted.gtf
+
+# Run benchmark with filtered reads
+python benchmarks/benchmark.py gencode.v40.chr2s.annotation.sorted.gtf --filter-chrom chr2
 ```
+
+**Results** (435,497 rows, 25 columns):
+
+```
+============================================================
+FILE SIZE COMPARISON
+============================================================
+GTF file:              189.99 MB
+Parquet file:          5.22 MB
+Parquet (partitioned): 8.48 MB
+Compression ratio:     2.7%
+
+============================================================
+FULL READ TIME COMPARISON
+============================================================
+GTF read time (pyranges):  6.913s
+Parquet read time:         0.253s
+Speedup:                   27.3x
+
+============================================================
+IN-MEMORY SIZE COMPARISON
+============================================================
+GTF DataFrame memory:     511.06 MB
+Parquet DataFrame memory: 384.33 MB
+
+============================================================
+FILTERED READ COMPARISON (chr2, gene)
+============================================================
+Filtered read time:    0.009s
+Filtered rows:         4,267
+Filtered memory:       594.93 KB
+Memory reduction:      99.8%
+
+============================================================
+SUMMARY
+============================================================
+File size reduction:   97.3%
+Read speedup:          27.3x
+```
+
+**Key Takeaways:**
+- **97.3%** smaller file size with Parquet
+- **27.3x** faster full reads compared to parsing GTF
+- **99.8%** memory reduction with filtered reads using predicate pushdown
+- Conversion time: ~8.5s for 435K rows
 
 ## Schema Presets
 
