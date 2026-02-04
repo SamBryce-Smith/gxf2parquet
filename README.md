@@ -16,18 +16,26 @@ I heavily use the pyranges1 library during my day-to-day analysis when working w
 
 ## Installation
 
-Requires Python 3.12+.
+Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
+
+### General users
 
 ```bash
-# Create virtual environment with uv
-uv venv --python 3.12 .venv
-source .venv/bin/activate
+uv pip install gff2parquet
+```
 
-# Install package
-uv pip install -e .
+### Developers
 
-# Or with dev dependencies for testing
-uv pip install -e ".[dev]"
+From the repository root, sync the project environment (includes dev dependencies by default):
+
+```bash
+uv sync
+```
+
+To install without dev dependencies:
+
+```bash
+uv sync --no-dev
 ```
 
 ## Quick Start
@@ -73,13 +81,13 @@ df = read_gtf_parquet(
 
 ```bash
 # Run all tests
-pytest
+uv run pytest
 
 # Run with verbose output
-pytest -v
+uv run pytest -v
 
 # Run a specific test
-pytest tests/test_convert.py::TestRoundtrip::test_roundtrip
+uv run pytest tests/test_convert.py::TestRoundtrip::test_roundtrip
 ```
 
 ## Benchmarking
