@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 import pyarrow.parquet as pq
+import pyranges1 as pr
 
 
 def read_gtf_parquet(
@@ -11,8 +12,9 @@ def read_gtf_parquet(
     *,
     columns: list[str] | None = None,
     filters: list[tuple] | list[list[tuple]] | None = None,
-) -> pd.DataFrame:
-    """Read a GTF Parquet file into a pandas DataFrame.
+    as_pyranges: bool = True,
+) -> pr.PyRanges | pd.DataFrame:
+    """Read a GTF Parquet file into a PyRanges object or pandas DataFrame.
 
     Args:
         parquet_path: Path to Parquet file or partitioned dataset directory.
@@ -20,19 +22,24 @@ def read_gtf_parquet(
         filters: Row group filters for predicate pushdown.
             Can be a list of tuples like [("Chromosome", "==", "chr1")]
             or a list of lists for OR conditions.
+        as_pyranges: If True (default), returns a PyRanges object with 0-based coordinates.
+            If False, returns a pandas DataFrame with 1-based coordinates.
 
     Returns:
-        pandas DataFrame with the requested data.
+        PyRanges object (if as_pyranges=True) or pandas DataFrame (if as_pyranges=False).
 
     Examples:
-        # Read all data
-        df = read_gtf_parquet("annotations.parquet")
+        # Read as PyRanges (default)
+        gr = read_gtf_parquet("annotations.parquet")
+
+        # Read as DataFrame with 1-based coordinates
+        df = read_gtf_parquet("annotations.parquet", as_pyranges=False)
 
         # Read specific columns
-        df = read_gtf_parquet("annotations.parquet", columns=["Chromosome", "Start", "End", "gene_name"])
+        gr = read_gtf_parquet("annotations.parquet", columns=["Chromosome", "Start", "End", "gene_name"])
 
         # Read with filters (predicate pushdown)
-        df = read_gtf_parquet(
+        gr = read_gtf_parquet(
             "annotations.parquet",
             filters=[("Chromosome", "==", "chr1"), ("Feature", "==", "gene")]
         )
@@ -42,4 +49,12 @@ def read_gtf_parquet(
         columns=columns,
         filters=filters,
     )
-    return table.to_pandas()
+    df = table.to_pandas()
+
+    if as_pyranges:
+        # Convert from 1-based GTF coordinates (stored in Parquet) to 0-based PyRanges coordinates
+        # GTF/GFF are 1-based, but PyRanges uses 0-based coordinates internally
+        df.loc[:, "Start"] = df.Start - 1
+        return pr.PyRanges(df)
+
+    return df
