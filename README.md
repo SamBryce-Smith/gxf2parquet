@@ -38,6 +38,23 @@ To install without dev dependencies:
 uv sync --no-dev
 ```
 
+#### Setting up pre-commit hooks
+
+The project uses [prek](https://prek.j178.dev/) for pre-commit hooks. To enable automatic checks on every commit:
+
+```bash
+# Install the git hooks
+uv run prek install
+
+# Run hooks manually on all files (optional)
+uv run prek run --all-files
+```
+
+The configured hooks will automatically run before each commit to:
+- Validate TOML file syntax
+- Detect accidentally committed private keys
+- Ensure executable scripts have proper shebangs
+
 ## Quick Start
 
 ### CLI Usage
