@@ -109,7 +109,7 @@ The benchmark script compares conversion time, file size, read performance, and 
 grep 'chr2' gencode.v40.annotation.sorted.gtf > gencode.v40.chr2s.annotation.sorted.gtf
 
 # Run benchmark with filtered reads
-python benchmarks/benchmark.py gencode.v40.chr2s.annotation.sorted.gtf --filter-chrom chr2
+uv run benchmarks/benchmark.py gencode.v40.chr2s.annotation.sorted.gtf --filter-chrom chr2
 ```
 
 **Results** (435,497 rows, 25 columns):
