@@ -11,7 +11,7 @@ I heavily use the pyranges1 library during my day-to-day analysis when working w
 - **One-time parsing**: Parse the key-value pairs from the GTF attribute field into individual columns once for a given reference file, speedily read Parquet many times
 - **Load what you need**: Leverage predicate pushdown to pre-filter for intervals of interest (e.g. chromosome, strand, exon/CDS entries etc.) and load only the columns (e.g. attribute keys) you need for analysis
 - **Optimized dtypes**: Efficiently encode datatypes, reducing in-memory object size and avoiding per-run inference
-- **Compatible with pyranges1**: import directly as a pyranges1 object for downstream analysis, relying on the same core dependencies (pandas, pyarrow) (TODO!)
+- **Compatible with pyranges1**: Returns pyranges1 objects by default for downstream analysis, relying on the same core dependencies (pandas, pyarrow)
 - **Reduced disk space usage with Parquet vs uncompressed/gzipped TSV**
 
 ## Installation
@@ -69,11 +69,19 @@ gtf_to_parquet(
     partition_cols=["Chromosome", "Feature"],
 )
 
-# Read with filters (predicate pushdown)
+# Read as PyRanges object (default) with 0-based coordinates
+gr = read_gtf_parquet(
+    "annotations.parquet",
+    columns=["Chromosome", "Start", "End", "gene_name"],
+    filters=[("Chromosome", "==", "chr1"), ("Feature", "==", "gene")],
+)
+
+# Or read as pandas DataFrame with 1-based coordinates
 df = read_gtf_parquet(
     "annotations.parquet",
     columns=["Chromosome", "Start", "End", "gene_name"],
     filters=[("Chromosome", "==", "chr1"), ("Feature", "==", "gene")],
+    as_pyranges=False,
 )
 ```
 
@@ -158,7 +166,13 @@ Two presets are available for common GTF sources:
 
 ## Coordinate System
 
-The package stores GTF-native coordinates (1-based, closed intervals). When reading GTF files with pyranges (which uses 0-based, half-open intervals), coordinates are automatically converted.
+The package stores GTF-native coordinates (1-based, closed intervals) in the Parquet file.
+
+When reading with `read_gtf_parquet()`:
+- **Default behavior** (`as_pyranges=True`): Returns a PyRanges object with 0-based, half-open coordinates (Start coordinate is automatically converted by subtracting 1)
+- **DataFrame mode** (`as_pyranges=False`): Returns a pandas DataFrame with 1-based coordinates as stored in the Parquet file
+
+This ensures compatibility with both the GTF standard and PyRanges conventions.
 
 ## License
 
