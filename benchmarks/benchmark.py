@@ -98,6 +98,31 @@ def benchmark_filtered_read(
     return avg_time, df
 
 
+def benchmark_naive_filtered_read(
+    gtf_path: Path,
+    chromosome: str,
+    feature: str = "gene",
+    n_runs: int = 3,
+) -> tuple[float, pd.DataFrame]:
+    """Benchmark naive approach: read full GTF then filter with pandas."""
+    times = []
+    df = None
+
+    for _ in range(n_runs):
+        gc.collect()
+        start = time.perf_counter()
+        gr = pr.read_gtf(str(gtf_path))
+        full_df = pd.DataFrame(gr)
+        df = full_df[
+            (full_df["Chromosome"] == chromosome) & (full_df["Feature"] == feature)
+        ][["Chromosome", "Start", "End", "Strand", "gene_id", "gene_name"]]
+        elapsed = time.perf_counter() - start
+        times.append(elapsed)
+
+    avg_time = sum(times) / len(times)
+    return avg_time, df
+
+
 def main():
     parser = argparse.ArgumentParser(description="Benchmark GTF vs Parquet performance")
     parser.add_argument("gtf_path", type=Path, help="Path to GTF file")
@@ -193,16 +218,27 @@ def main():
             filter_chrom = available_chroms[0]
             print(f"Note: Using {filter_chrom} (requested {args.filter_chrom} not found)")
 
+        # Benchmark naive approach: read full GTF and filter with pandas
+        naive_filtered_time, naive_filtered_df = benchmark_naive_filtered_read(
+            args.gtf_path,
+            filter_chrom,
+            n_runs=args.n_runs,
+        )
+
+        # Benchmark parquet filtered read
         filtered_read_time, filtered_df = benchmark_filtered_read(
             parquet_partitioned_path,
             filter_chrom,
             n_runs=args.n_runs,
         )
 
+        naive_filtered_memory = get_memory_usage(naive_filtered_df)
         filtered_memory = get_memory_usage(filtered_df)
 
-        print(f"Filtered read time:    {filtered_read_time:.3f}s")
-        print(f"Filtered rows:         {len(filtered_df):,}")
+        print(f"Naive approach (GTF + pandas filter):  {naive_filtered_time:.3f}s")
+        print(f"Parquet filtered read:                  {filtered_read_time:.3f}s")
+        print(f"Speedup:                                {naive_filtered_time / filtered_read_time:.1f}x")
+        print(f"\nFiltered rows:         {len(filtered_df):,}")
         print(f"Filtered memory:       {format_size(filtered_memory)}")
         print(f"Memory reduction:      {(1 - filtered_memory / parquet_memory) * 100:.1f}%")
 

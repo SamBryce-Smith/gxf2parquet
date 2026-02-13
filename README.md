@@ -109,12 +109,22 @@ The benchmark script compares conversion time, file size, read performance, and 
 grep 'chr2' gencode.v40.annotation.sorted.gtf > gencode.v40.chr2s.annotation.sorted.gtf
 
 # Run benchmark with filtered reads
-python benchmarks/benchmark.py gencode.v40.chr2s.annotation.sorted.gtf --filter-chrom chr2
+uv run benchmarks/benchmark.py gencode.v40.chr2s.annotation.sorted.gtf --filter-chrom chr2
 ```
 
 **Results** (435,497 rows, 25 columns):
 
 ```
+Benchmarking: gencode.v40.chr2s.annotation.sorted.gtf
+Runs per benchmark: 3
+============================================================
+
+Converting GTF to Parquet...
+Conversion time: 8.55s
+
+Converting GTF to Parquet (partitioned by Chromosome, Feature)...
+Conversion time (partitioned): 8.44s
+
 ============================================================
 FILE SIZE COMPARISON
 ============================================================
@@ -126,9 +136,9 @@ Compression ratio:     2.7%
 ============================================================
 FULL READ TIME COMPARISON
 ============================================================
-GTF read time (pyranges):  6.913s
-Parquet read time:         0.253s
-Speedup:                   27.3x
+GTF read time (pyranges):  7.241s
+Parquet read time:         0.258s
+Speedup:                   28.0x
 
 ============================================================
 IN-MEMORY SIZE COMPARISON
@@ -139,7 +149,10 @@ Parquet DataFrame memory: 384.33 MB
 ============================================================
 FILTERED READ COMPARISON (chr2, gene)
 ============================================================
-Filtered read time:    0.009s
+Naive approach (GTF + pandas filter):  7.411s
+Parquet filtered read:                  0.012s
+Speedup:                                635.0x
+
 Filtered rows:         4,267
 Filtered memory:       594.93 KB
 Memory reduction:      99.8%
@@ -147,8 +160,10 @@ Memory reduction:      99.8%
 ============================================================
 SUMMARY
 ============================================================
+Rows in dataset:       435,497
+Columns:               25
 File size reduction:   97.3%
-Read speedup:          27.3x
+Read speedup:          28.0x
 ```
 
 **Key Takeaways:**
