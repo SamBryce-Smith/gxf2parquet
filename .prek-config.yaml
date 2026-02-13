@@ -1,0 +1,6 @@
+repos:
+  - repo: builtin
+    hooks:
+      - id: check-toml
+      - id: detect-private-key
+      - id: check-executables-have-shebangs
