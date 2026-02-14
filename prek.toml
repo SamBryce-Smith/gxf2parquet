@@ -1,0 +1,11 @@
+[[repos]]
+repo = "builtin"
+
+[[repos.hooks]]
+id = "check-toml"
+
+[[repos.hooks]]
+id = "detect-private-key"
+
+[[repos.hooks]]
+id = "check-executables-have-shebangs"
