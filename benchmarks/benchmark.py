@@ -123,6 +123,78 @@ def benchmark_naive_filtered_read(
     return avg_time, df
 
 
+def benchmark_region_query(
+    parquet_path: Path,
+    chromosome: str,
+    start: int,
+    end: int,
+    strand: str | None = None,
+    n_runs: int = 3,
+) -> tuple[float, pd.DataFrame]:
+    """Benchmark region query using Parquet with Start/End range filters."""
+    times = []
+    df = None
+
+    for _ in range(n_runs):
+        gc.collect()
+        start_time = time.perf_counter()
+
+        # Build filters for region query
+        filters = [
+            ("Chromosome", "==", chromosome),
+            ("Start", "<=", end),
+            ("End", ">=", start),
+        ]
+
+        if strand is not None:
+            filters.append(("Strand", "==", strand))
+
+        df = read_gtf_parquet(
+            parquet_path,
+            columns=["Chromosome", "Start", "End", "Strand", "Feature", "gene_id", "gene_name"],
+            filters=filters,
+        )
+        elapsed = time.perf_counter() - start_time
+        times.append(elapsed)
+
+    avg_time = sum(times) / len(times)
+    return avg_time, df
+
+
+def benchmark_naive_region_query(
+    gtf_path: Path,
+    chromosome: str,
+    start: int,
+    end: int,
+    strand: str | None = None,
+    n_runs: int = 3,
+) -> tuple[float, pd.DataFrame]:
+    """Benchmark naive region query: read full GTF then filter with gr.loci."""
+    times = []
+    df = None
+
+    for _ in range(n_runs):
+        gc.collect()
+        start_time = time.perf_counter()
+        gr = pr.read_gtf(str(gtf_path))
+
+        # Use gr.loci for region filtering
+        if strand is not None:
+            filtered_gr = gr.loci[chromosome, strand, start:end]
+        else:
+            # For unstranded queries, filter both strands
+            filtered_gr = gr.loci[chromosome, start:end]
+
+        df = pd.DataFrame(filtered_gr)[
+            ["Chromosome", "Start", "End", "Strand", "Feature", "gene_id", "gene_name"]
+        ]
+        elapsed = time.perf_counter() - start_time
+        times.append(elapsed)
+
+    avg_time = sum(times) / len(times)
+    return avg_time, df
+
+
 def main():
     parser = argparse.ArgumentParser(description="Benchmark GTF vs Parquet performance")
     parser.add_argument("gtf_path", type=Path, help="Path to GTF file")
@@ -133,6 +205,25 @@ def main():
         "--filter-chrom",
         default="chr1",
         help="Chromosome for filtered read benchmark (default: chr1)",
+    )
+    parser.add_argument(
+        "--region-chrom",
+        help="Chromosome for region query benchmark (e.g., chr2)",
+    )
+    parser.add_argument(
+        "--region-start",
+        type=int,
+        help="Start position for region query benchmark",
+    )
+    parser.add_argument(
+        "--region-end",
+        type=int,
+        help="End position for region query benchmark",
+    )
+    parser.add_argument(
+        "--region-strand",
+        choices=["+", "-"],
+        help="Strand for region query benchmark (optional, unstranded if not provided)",
     )
     args = parser.parse_args()
 
@@ -241,6 +332,43 @@ def main():
         print(f"\nFiltered rows:         {len(filtered_df):,}")
         print(f"Filtered memory:       {format_size(filtered_memory)}")
         print(f"Memory reduction:      {(1 - filtered_memory / parquet_memory) * 100:.1f}%")
+
+        # Region query comparison (if region parameters provided)
+        if args.region_chrom and args.region_start is not None and args.region_end is not None:
+            print("\n" + "=" * 60)
+            strand_str = f", {args.region_strand}" if args.region_strand else " (unstranded)"
+            print(f"REGION QUERY COMPARISON ({args.region_chrom}:{args.region_start}-{args.region_end}{strand_str})")
+            print("=" * 60)
+
+            # Benchmark naive approach: read full GTF and filter with gr.loci
+            naive_region_time, naive_region_df = benchmark_naive_region_query(
+                args.gtf_path,
+                args.region_chrom,
+                args.region_start,
+                args.region_end,
+                args.region_strand,
+                n_runs=args.n_runs,
+            )
+
+            # Benchmark parquet region query
+            region_time, region_df = benchmark_region_query(
+                parquet_partitioned_path,
+                args.region_chrom,
+                args.region_start,
+                args.region_end,
+                args.region_strand,
+                n_runs=args.n_runs,
+            )
+
+            naive_region_memory = get_memory_usage(naive_region_df)
+            region_memory = get_memory_usage(region_df)
+
+            print(f"Naive approach (GTF + gr.loci):  {naive_region_time:.3f}s")
+            print(f"Parquet region query:            {region_time:.3f}s")
+            print(f"Speedup:                         {naive_region_time / region_time:.1f}x")
+            print(f"\nRegion query rows:     {len(region_df):,}")
+            print(f"Region query memory:   {format_size(region_memory)}")
+            print(f"Memory reduction:      {(1 - region_memory / parquet_memory) * 100:.1f}%")
 
         # Summary
         print("\n" + "=" * 60)

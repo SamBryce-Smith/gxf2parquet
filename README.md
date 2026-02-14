@@ -100,6 +100,18 @@ df = read_gtf_parquet(
     filters=[("Chromosome", "==", "chr1"), ("Feature", "==", "gene")],
     as_pyranges=False,
 )
+
+# Region-based query: filter by genomic coordinates
+gr = read_gtf_parquet(
+    "annotations.parquet",
+    columns=["Chromosome", "Start", "End", "Strand", "Feature", "gene_name"],
+    filters=[
+        ("Chromosome", "==", "chr2"),
+        ("Start", "<=", 55000),
+        ("End", ">=", 50000),
+        ("Strand", "==", "+"),
+    ],
+)
 ```
 
 ## Testing
@@ -127,6 +139,14 @@ grep 'chr2' gencode.v40.annotation.sorted.gtf > gencode.v40.chr2s.annotation.sor
 
 # Run benchmark with filtered reads
 uv run benchmarks/benchmark.py gencode.v40.chr2s.annotation.sorted.gtf --filter-chrom chr2
+
+# Run benchmark with region query (e.g., chr2:50000-55000 on + strand)
+uv run benchmarks/benchmark.py gencode.v40.chr2s.annotation.sorted.gtf \
+    --filter-chrom chr2 \
+    --region-chrom chr2 \
+    --region-start 50000 \
+    --region-end 55000 \
+    --region-strand +
 ```
 
 **Results** (435,497 rows, 25 columns):
