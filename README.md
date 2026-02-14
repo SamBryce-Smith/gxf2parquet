@@ -140,12 +140,12 @@ grep 'chr2' gencode.v40.annotation.sorted.gtf > gencode.v40.chr2s.annotation.sor
 # Run benchmark with filtered reads
 uv run benchmarks/benchmark.py gencode.v40.chr2s.annotation.sorted.gtf --filter-chrom chr2
 
-# Run benchmark with region query (e.g., chr2:50000-55000 on + strand)
+# Run benchmark with region query (e.g., chr2:30000-500000 on + strand)
 uv run benchmarks/benchmark.py gencode.v40.chr2s.annotation.sorted.gtf \
     --filter-chrom chr2 \
     --region-chrom chr2 \
-    --region-start 50000 \
-    --region-end 55000 \
+    --region-start 30000 \
+    --region-end 500000 \
     --region-strand +
 ```
 
