@@ -100,6 +100,18 @@ df = read_gtf_parquet(
     filters=[("Chromosome", "==", "chr1"), ("Feature", "==", "gene")],
     as_pyranges=False,
 )
+
+# Region-based query: filter by genomic coordinates
+gr = read_gtf_parquet(
+    "annotations.parquet",
+    columns=["Chromosome", "Start", "End", "Strand", "Feature", "gene_name"],
+    filters=[
+        ("Chromosome", "==", "chr2"),
+        ("Start", "<=", 55000),
+        ("End", ">=", 50000),
+        ("Strand", "==", "+"),
+    ],
+)
 ```
 
 ## Testing
@@ -127,6 +139,14 @@ grep 'chr2' gencode.v40.annotation.sorted.gtf > gencode.v40.chr2s.annotation.sor
 
 # Run benchmark with filtered reads
 uv run benchmarks/benchmark.py gencode.v40.chr2s.annotation.sorted.gtf --filter-chrom chr2
+
+# Run benchmark with region query (e.g., chr2:30000-500000 on + strand)
+uv run benchmarks/benchmark.py gencode.v40.chr2s.annotation.sorted.gtf \
+    --filter-chrom chr2 \
+    --region-chrom chr2 \
+    --region-start 30000 \
+    --region-end 500000 \
+    --region-strand +
 ```
 
 **Results** (435,497 rows, 25 columns):
@@ -137,10 +157,10 @@ Runs per benchmark: 3
 ============================================================
 
 Converting GTF to Parquet...
-Conversion time: 8.55s
+Conversion time: 8.11s
 
 Converting GTF to Parquet (partitioned by Chromosome, Feature)...
-Conversion time (partitioned): 8.44s
+Conversion time (partitioned): 8.25s
 
 ============================================================
 FILE SIZE COMPARISON
@@ -153,9 +173,9 @@ Compression ratio:     2.7%
 ============================================================
 FULL READ TIME COMPARISON
 ============================================================
-GTF read time (pyranges):  7.241s
-Parquet read time:         0.258s
-Speedup:                   28.0x
+GTF read time (pyranges):  6.793s
+Parquet read time:         0.250s
+Speedup:                   27.2x
 
 ============================================================
 IN-MEMORY SIZE COMPARISON
@@ -167,12 +187,23 @@ Parquet DataFrame memory: 384.33 MB
 FILTERED READ COMPARISON (chr2, gene)
 ============================================================
 Naive approach (GTF + pandas filter):  7.411s
-Parquet filtered read:                  0.012s
-Speedup:                                635.0x
+Parquet filtered read:                  0.010s
+Speedup:                                764.4x
 
 Filtered rows:         4,267
 Filtered memory:       594.93 KB
 Memory reduction:      99.8%
+
+============================================================
+REGION QUERY COMPARISON (chr2:30000-500000, +)
+============================================================
+Naive approach (GTF + gr.loci):  7.676s
+Parquet region query:            0.013s
+Speedup:                         597.0x
+
+Region query rows:     212
+Region query memory:   30.70 KB
+Memory reduction:      100.0%
 
 ============================================================
 SUMMARY
@@ -180,14 +211,8 @@ SUMMARY
 Rows in dataset:       435,497
 Columns:               25
 File size reduction:   97.3%
-Read speedup:          28.0x
+Read speedup:          27.2x
 ```
-
-**Key Takeaways:**
-- **97.3%** smaller file size with Parquet
-- **27.3x** faster full reads compared to parsing GTF
-- **99.8%** memory reduction with filtered reads using predicate pushdown
-- Conversion time: ~8.5s for 435K rows
 
 ## Schema Presets
 
