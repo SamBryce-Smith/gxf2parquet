@@ -7,12 +7,38 @@ import os
 import sys
 import tempfile
 import time
+import tracemalloc
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Generator
 
 import pandas as pd
 import pyranges1 as pr
 
 from gff2parquet import gtf_to_parquet, read_gtf_parquet, GENCODE_PRESET
+
+
+@contextmanager
+def track_memory() -> Generator[dict, None, None]:
+    """Context manager to track peak memory usage during execution.
+
+    Usage:
+        with track_memory() as mem_stats:
+            # ... do work ...
+        print(f"Peak memory: {mem_stats['peak'] / 1024 / 1024:.2f} MiB")
+
+    Yields:
+        dict with keys 'current' and 'peak' (both in bytes)
+    """
+    tracemalloc.start()
+    stats = {"peak": 0, "current": 0}
+    try:
+        yield stats
+    finally:
+        current, peak = tracemalloc.get_traced_memory()
+        stats["current"] = current
+        stats["peak"] = peak
+        tracemalloc.stop()
 
 
 def get_file_size(path: Path) -> int:
@@ -38,39 +64,59 @@ def get_memory_usage(df: pd.DataFrame) -> int:
     return df.memory_usage(deep=True).sum()
 
 
-def benchmark_read_gtf(gtf_path: Path, n_runs: int = 3) -> tuple[float, pd.DataFrame]:
-    """Benchmark pyranges GTF read time."""
+def benchmark_read_gtf(gtf_path: Path, n_runs: int = 3) -> tuple[float, pd.DataFrame, int]:
+    """Benchmark pyranges GTF read time.
+
+    Returns:
+        tuple of (avg_time_seconds, resulting_dataframe, avg_peak_memory_bytes)
+    """
     times = []
+    peak_memories = []
     df = None
 
     for _ in range(n_runs):
         gc.collect()
-        start = time.perf_counter()
-        gr = pr.read_gtf(str(gtf_path))
-        df = pd.DataFrame(gr)
-        elapsed = time.perf_counter() - start
+
+        with track_memory() as mem_stats:
+            start = time.perf_counter()
+            gr = pr.read_gtf(str(gtf_path))
+            df = pd.DataFrame(gr)
+            elapsed = time.perf_counter() - start
+
         times.append(elapsed)
+        peak_memories.append(mem_stats["peak"])
 
     avg_time = sum(times) / len(times)
-    return avg_time, df
+    avg_peak_memory = sum(peak_memories) / len(peak_memories)
+    return avg_time, df, avg_peak_memory
 
 
 def benchmark_read_parquet(
     parquet_path: Path, n_runs: int = 3
-) -> tuple[float, pd.DataFrame]:
-    """Benchmark Parquet read time."""
+) -> tuple[float, pd.DataFrame, int]:
+    """Benchmark Parquet read time.
+
+    Returns:
+        tuple of (avg_time_seconds, resulting_dataframe, avg_peak_memory_bytes)
+    """
     times = []
+    peak_memories = []
     df = None
 
     for _ in range(n_runs):
         gc.collect()
-        start = time.perf_counter()
-        df = read_gtf_parquet(parquet_path)
-        elapsed = time.perf_counter() - start
+
+        with track_memory() as mem_stats:
+            start = time.perf_counter()
+            df = read_gtf_parquet(parquet_path)
+            elapsed = time.perf_counter() - start
+
         times.append(elapsed)
+        peak_memories.append(mem_stats["peak"])
 
     avg_time = sum(times) / len(times)
-    return avg_time, df
+    avg_peak_memory = sum(peak_memories) / len(peak_memories)
+    return avg_time, df, avg_peak_memory
 
 
 def benchmark_filtered_read(
@@ -78,24 +124,34 @@ def benchmark_filtered_read(
     chromosome: str,
     feature: str = "gene",
     n_runs: int = 3,
-) -> tuple[float, pd.DataFrame]:
-    """Benchmark filtered Parquet read time."""
+) -> tuple[float, pd.DataFrame, int]:
+    """Benchmark filtered Parquet read time.
+
+    Returns:
+        tuple of (avg_time_seconds, resulting_dataframe, avg_peak_memory_bytes)
+    """
     times = []
+    peak_memories = []
     df = None
 
     for _ in range(n_runs):
         gc.collect()
-        start = time.perf_counter()
-        df = read_gtf_parquet(
-            parquet_path,
-            columns=["Chromosome", "Start", "End", "Strand", "gene_id", "gene_name"],
-            filters=[("Chromosome", "==", chromosome), ("Feature", "==", feature)],
-        )
-        elapsed = time.perf_counter() - start
+
+        with track_memory() as mem_stats:
+            start = time.perf_counter()
+            df = read_gtf_parquet(
+                parquet_path,
+                columns=["Chromosome", "Start", "End", "Strand", "gene_id", "gene_name"],
+                filters=[("Chromosome", "==", chromosome), ("Feature", "==", feature)],
+            )
+            elapsed = time.perf_counter() - start
+
         times.append(elapsed)
+        peak_memories.append(mem_stats["peak"])
 
     avg_time = sum(times) / len(times)
-    return avg_time, df
+    avg_peak_memory = sum(peak_memories) / len(peak_memories)
+    return avg_time, df, avg_peak_memory
 
 
 def benchmark_naive_filtered_read(
@@ -103,24 +159,34 @@ def benchmark_naive_filtered_read(
     chromosome: str,
     feature: str = "gene",
     n_runs: int = 3,
-) -> tuple[float, pd.DataFrame]:
-    """Benchmark naive approach: read full GTF then filter with pandas."""
+) -> tuple[float, pd.DataFrame, int]:
+    """Benchmark naive approach: read full GTF then filter with pandas.
+
+    Returns:
+        tuple of (avg_time_seconds, resulting_dataframe, avg_peak_memory_bytes)
+    """
     times = []
+    peak_memories = []
     df = None
 
     for _ in range(n_runs):
         gc.collect()
-        start = time.perf_counter()
-        gr = pr.read_gtf(str(gtf_path))
-        full_df = pd.DataFrame(gr)
-        df = full_df[
-            (full_df["Chromosome"] == chromosome) & (full_df["Feature"] == feature)
-        ][["Chromosome", "Start", "End", "Strand", "gene_id", "gene_name"]]
-        elapsed = time.perf_counter() - start
+
+        with track_memory() as mem_stats:
+            start = time.perf_counter()
+            gr = pr.read_gtf(str(gtf_path))
+            full_df = pd.DataFrame(gr)
+            df = full_df[
+                (full_df["Chromosome"] == chromosome) & (full_df["Feature"] == feature)
+            ][["Chromosome", "Start", "End", "Strand", "gene_id", "gene_name"]]
+            elapsed = time.perf_counter() - start
+
         times.append(elapsed)
+        peak_memories.append(mem_stats["peak"])
 
     avg_time = sum(times) / len(times)
-    return avg_time, df
+    avg_peak_memory = sum(peak_memories) / len(peak_memories)
+    return avg_time, df, avg_peak_memory
 
 
 def benchmark_region_query(
@@ -130,35 +196,45 @@ def benchmark_region_query(
     end: int,
     strand: str | None = None,
     n_runs: int = 3,
-) -> tuple[float, pd.DataFrame]:
-    """Benchmark region query using Parquet with Start/End range filters."""
+) -> tuple[float, pd.DataFrame, int]:
+    """Benchmark region query using Parquet with Start/End range filters.
+
+    Returns:
+        tuple of (avg_time_seconds, resulting_dataframe, avg_peak_memory_bytes)
+    """
     times = []
+    peak_memories = []
     df = None
 
     for _ in range(n_runs):
         gc.collect()
-        start_time = time.perf_counter()
 
-        # Build filters for region query
-        filters = [
-            ("Chromosome", "==", chromosome),
-            ("Start", "<=", end),
-            ("End", ">=", start),
-        ]
+        with track_memory() as mem_stats:
+            start_time = time.perf_counter()
 
-        if strand is not None:
-            filters.append(("Strand", "==", strand))
+            # Build filters for region query
+            filters = [
+                ("Chromosome", "==", chromosome),
+                ("Start", "<=", end),
+                ("End", ">=", start),
+            ]
 
-        df = read_gtf_parquet(
-            parquet_path,
-            columns=["Chromosome", "Start", "End", "Strand", "Feature", "gene_id", "gene_name"],
-            filters=filters,
-        )
-        elapsed = time.perf_counter() - start_time
+            if strand is not None:
+                filters.append(("Strand", "==", strand))
+
+            df = read_gtf_parquet(
+                parquet_path,
+                columns=["Chromosome", "Start", "End", "Strand", "Feature", "gene_id", "gene_name"],
+                filters=filters,
+            )
+            elapsed = time.perf_counter() - start_time
+
         times.append(elapsed)
+        peak_memories.append(mem_stats["peak"])
 
     avg_time = sum(times) / len(times)
-    return avg_time, df
+    avg_peak_memory = sum(peak_memories) / len(peak_memories)
+    return avg_time, df, avg_peak_memory
 
 
 def benchmark_naive_region_query(
@@ -168,31 +244,41 @@ def benchmark_naive_region_query(
     end: int,
     strand: str | None = None,
     n_runs: int = 3,
-) -> tuple[float, pd.DataFrame]:
-    """Benchmark naive region query: read full GTF then filter with gr.loci."""
+) -> tuple[float, pd.DataFrame, int]:
+    """Benchmark naive region query: read full GTF then filter with gr.loci.
+
+    Returns:
+        tuple of (avg_time_seconds, resulting_dataframe, avg_peak_memory_bytes)
+    """
     times = []
+    peak_memories = []
     df = None
 
     for _ in range(n_runs):
         gc.collect()
-        start_time = time.perf_counter()
-        gr = pr.read_gtf(str(gtf_path))
 
-        # Use gr.loci for region filtering
-        if strand is not None:
-            filtered_gr = gr.loci[chromosome, strand, start:end]
-        else:
-            # For unstranded queries, filter both strands
-            filtered_gr = gr.loci[chromosome, start:end]
+        with track_memory() as mem_stats:
+            start_time = time.perf_counter()
+            gr = pr.read_gtf(str(gtf_path))
 
-        df = pd.DataFrame(filtered_gr)[
-            ["Chromosome", "Start", "End", "Strand", "Feature", "gene_id", "gene_name"]
-        ]
-        elapsed = time.perf_counter() - start_time
+            # Use gr.loci for region filtering
+            if strand is not None:
+                filtered_gr = gr.loci[chromosome, strand, start:end]
+            else:
+                # For unstranded queries, filter both strands
+                filtered_gr = gr.loci[chromosome, start:end]
+
+            df = pd.DataFrame(filtered_gr)[
+                ["Chromosome", "Start", "End", "Strand", "Feature", "gene_id", "gene_name"]
+            ]
+            elapsed = time.perf_counter() - start_time
+
         times.append(elapsed)
+        peak_memories.append(mem_stats["peak"])
 
     avg_time = sum(times) / len(times)
-    return avg_time, df
+    avg_peak_memory = sum(peak_memories) / len(peak_memories)
+    return avg_time, df, avg_peak_memory
 
 
 def main():
@@ -277,14 +363,17 @@ def main():
         print("FULL READ TIME COMPARISON")
         print("=" * 60)
 
-        gtf_read_time, gtf_df = benchmark_read_gtf(args.gtf_path, args.n_runs)
-        parquet_read_time, parquet_df = benchmark_read_parquet(
+        gtf_read_time, gtf_df, gtf_peak_memory = benchmark_read_gtf(args.gtf_path, args.n_runs)
+        parquet_read_time, parquet_df, parquet_peak_memory = benchmark_read_parquet(
             parquet_path, args.n_runs
         )
 
         print(f"GTF read time (pyranges):  {gtf_read_time:.3f}s")
+        print(f"GTF peak memory:           {format_size(gtf_peak_memory)}")
         print(f"Parquet read time:         {parquet_read_time:.3f}s")
-        print(f"Speedup:                   {gtf_read_time / parquet_read_time:.1f}x")
+        print(f"Parquet peak memory:       {format_size(parquet_peak_memory)}")
+        print(f"Speedup (time):            {gtf_read_time / parquet_read_time:.1f}x")
+        print(f"Memory reduction (peak):   {(1 - parquet_peak_memory / gtf_peak_memory) * 100:.1f}%")
 
         # Memory usage comparison
         print("\n" + "=" * 60)
@@ -310,14 +399,14 @@ def main():
             print(f"Note: Using {filter_chrom} (requested {args.filter_chrom} not found)")
 
         # Benchmark naive approach: read full GTF and filter with pandas
-        naive_filtered_time, naive_filtered_df = benchmark_naive_filtered_read(
+        naive_filtered_time, naive_filtered_df, naive_filtered_peak_memory = benchmark_naive_filtered_read(
             args.gtf_path,
             filter_chrom,
             n_runs=args.n_runs,
         )
 
         # Benchmark parquet filtered read
-        filtered_read_time, filtered_df = benchmark_filtered_read(
+        filtered_read_time, filtered_df, filtered_peak_memory = benchmark_filtered_read(
             parquet_partitioned_path,
             filter_chrom,
             n_runs=args.n_runs,
@@ -327,8 +416,11 @@ def main():
         filtered_memory = get_memory_usage(filtered_df)
 
         print(f"Naive approach (GTF + pandas filter):  {naive_filtered_time:.3f}s")
+        print(f"Naive peak memory:                      {format_size(naive_filtered_peak_memory)}")
         print(f"Parquet filtered read:                  {filtered_read_time:.3f}s")
-        print(f"Speedup:                                {naive_filtered_time / filtered_read_time:.1f}x")
+        print(f"Parquet peak memory:                    {format_size(filtered_peak_memory)}")
+        print(f"Speedup (time):                         {naive_filtered_time / filtered_read_time:.1f}x")
+        print(f"Memory reduction (peak):                {(1 - filtered_peak_memory / naive_filtered_peak_memory) * 100:.1f}%")
         print(f"\nFiltered rows:         {len(filtered_df):,}")
         print(f"Filtered memory:       {format_size(filtered_memory)}")
         print(f"Memory reduction:      {(1 - filtered_memory / parquet_memory) * 100:.1f}%")
@@ -341,7 +433,7 @@ def main():
             print("=" * 60)
 
             # Benchmark naive approach: read full GTF and filter with gr.loci
-            naive_region_time, naive_region_df = benchmark_naive_region_query(
+            naive_region_time, naive_region_df, naive_region_peak_memory = benchmark_naive_region_query(
                 args.gtf_path,
                 args.region_chrom,
                 args.region_start,
@@ -351,7 +443,7 @@ def main():
             )
 
             # Benchmark parquet region query
-            region_time, region_df = benchmark_region_query(
+            region_time, region_df, region_peak_memory = benchmark_region_query(
                 parquet_partitioned_path,
                 args.region_chrom,
                 args.region_start,
@@ -364,8 +456,11 @@ def main():
             region_memory = get_memory_usage(region_df)
 
             print(f"Naive approach (GTF + gr.loci):  {naive_region_time:.3f}s")
+            print(f"Naive peak memory:               {format_size(naive_region_peak_memory)}")
             print(f"Parquet region query:            {region_time:.3f}s")
-            print(f"Speedup:                         {naive_region_time / region_time:.1f}x")
+            print(f"Parquet peak memory:             {format_size(region_peak_memory)}")
+            print(f"Speedup (time):                  {naive_region_time / region_time:.1f}x")
+            print(f"Memory reduction (peak):         {(1 - region_peak_memory / naive_region_peak_memory) * 100:.1f}%")
             print(f"\nRegion query rows:     {len(region_df):,}")
             print(f"Region query memory:   {format_size(region_memory)}")
             print(f"Memory reduction:      {(1 - region_memory / parquet_memory) * 100:.1f}%")
