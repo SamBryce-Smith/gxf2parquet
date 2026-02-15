@@ -54,6 +54,7 @@ The configured hooks will automatically run before each commit to:
 - Validate TOML file syntax
 - Detect accidentally committed private keys
 - Ensure executable scripts have proper shebangs
+- Run ruff for linting and python code formatting
 
 ## Quick Start
 
