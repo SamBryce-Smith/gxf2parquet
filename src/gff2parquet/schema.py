@@ -16,6 +16,16 @@ class SchemaPreset:
     list_columns: list[str] = field(default_factory=list)
 
 
+BASE_PRESET = SchemaPreset(
+    categorical_columns=[
+        "Chromosome",
+        "Source",
+        "Feature",
+        "Strand",
+    ],
+    list_columns=[],
+)
+
 GENCODE_PRESET = SchemaPreset(
     categorical_columns=[
         "Chromosome",
@@ -41,6 +51,7 @@ ENSEMBL_PRESET = SchemaPreset(
 )
 
 _PRESETS = {
+    "base": BASE_PRESET,
     "gencode": GENCODE_PRESET,
     "ensembl": ENSEMBL_PRESET,
 }
@@ -50,7 +61,7 @@ def get_preset(name: str) -> SchemaPreset:
     """Get a schema preset by name.
 
     Args:
-        name: Preset name ('gencode' or 'ensembl').
+        name: Preset name ('base', 'gencode', or 'ensembl').
 
     Returns:
         The requested SchemaPreset.
