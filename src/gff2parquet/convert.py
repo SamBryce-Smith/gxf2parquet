@@ -1,4 +1,4 @@
-"""GTF to Parquet conversion."""
+"""GTF/GFF to Parquet conversion."""
 
 from pathlib import Path
 
@@ -7,37 +7,28 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pyranges1 as pr
 
-from .schema import GENCODE_PRESET, SchemaPreset
+from .schema import BASE_PRESET, SchemaPreset
 
 
-def gtf_to_parquet(
-    gtf_path: str | Path,
+def _convert_to_parquet(
+    df: pd.DataFrame,
     parquet_path: str | Path,
     *,
-    preset: SchemaPreset | None = None,
+    preset: SchemaPreset,
     partition_cols: list[str] | None = None,
     compression: str = "zstd",
 ) -> None:
-    """Convert a GTF file to Parquet format.
+    """Internal conversion function shared by gtf_to_parquet and gff_to_parquet.
 
     Args:
-        gtf_path: Path to input GTF file (may be gzipped).
+        df: DataFrame with pyranges coordinates (0-based, half-open).
         parquet_path: Path for output Parquet file or directory (if partitioned).
         preset: Schema preset defining categorical and list columns.
-            Defaults to GENCODE_PRESET.
         partition_cols: Columns to partition by (e.g., ["Chromosome", "Feature"]).
-            If provided, output will be a directory with Hive-style partitioning.
         compression: Compression codec ('zstd', 'snappy', 'gzip', 'none').
     """
-    if preset is None:
-        preset = GENCODE_PRESET
-
-    # Parse GTF using pyranges (pyranges1 returns a DataFrame subclass)
-    gr = pr.read_gtf(str(gtf_path))
-    df = pd.DataFrame(gr)
-
-    # Convert pyranges coordinates (0-based, half-open) to GTF coordinates (1-based, closed)
-    # pyranges Start is 0-based, GTF is 1-based
+    # Convert pyranges coordinates (0-based, half-open) to GTF/GFF coordinates (1-based, closed)
+    # pyranges Start is 0-based, GTF/GFF is 1-based
     df["Start"] = df["Start"] + 1
     # pyranges End is already correct (half-open end equals closed end in 1-based)
 
@@ -72,3 +63,67 @@ def gtf_to_parquet(
             str(parquet_path),
             compression=compression if compression != "none" else None,
         )
+
+
+def gtf_to_parquet(
+    gtf_path: str | Path,
+    parquet_path: str | Path,
+    *,
+    preset: SchemaPreset = BASE_PRESET,
+    partition_cols: list[str] | None = None,
+    compression: str = "zstd",
+) -> None:
+    """Convert a GTF file to Parquet format.
+
+    Args:
+        gtf_path: Path to input GTF file (may be gzipped).
+        parquet_path: Path for output Parquet file or directory (if partitioned).
+        preset: Schema preset defining categorical and list columns.
+            Defaults to BASE_PRESET.
+        partition_cols: Columns to partition by (e.g., ["Chromosome", "Feature"]).
+            If provided, output will be a directory with Hive-style partitioning.
+        compression: Compression codec ('zstd', 'snappy', 'gzip', 'none').
+    """
+    # Parse GTF using pyranges (pyranges1 returns a DataFrame subclass)
+    gr = pr.read_gtf(str(gtf_path))
+    df = pd.DataFrame(gr)
+
+    _convert_to_parquet(
+        df,
+        parquet_path,
+        preset=preset,
+        partition_cols=partition_cols,
+        compression=compression,
+    )
+
+
+def gff_to_parquet(
+    gff_path: str | Path,
+    parquet_path: str | Path,
+    *,
+    preset: SchemaPreset = BASE_PRESET,
+    partition_cols: list[str] | None = None,
+    compression: str = "zstd",
+) -> None:
+    """Convert a GFF3 file to Parquet format.
+
+    Args:
+        gff_path: Path to input GFF3 file (may be gzipped).
+        parquet_path: Path for output Parquet file or directory (if partitioned).
+        preset: Schema preset defining categorical and list columns.
+            Defaults to BASE_PRESET.
+        partition_cols: Columns to partition by (e.g., ["Chromosome", "Feature"]).
+            If provided, output will be a directory with Hive-style partitioning.
+        compression: Compression codec ('zstd', 'snappy', 'gzip', 'none').
+    """
+    # Parse GFF3 using pyranges (pyranges1 returns a DataFrame subclass)
+    gr = pr.read_gff3(str(gff_path))
+    df = pd.DataFrame(gr)
+
+    _convert_to_parquet(
+        df,
+        parquet_path,
+        preset=preset,
+        partition_cols=partition_cols,
+        compression=compression,
+    )
