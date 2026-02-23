@@ -37,12 +37,25 @@ def _convert_to_parquet(
         if col in df.columns:
             df[col] = df[col].astype("category")
 
-    # Handle list columns - these are already parsed as lists by pyranges
-    # Just ensure they're properly typed for Arrow
-    # (pyranges stores multi-value attributes as comma-separated strings or lists)
+    # Handle list columns: pyranges returns duplicate attributes as comma-separated
+    # strings (e.g. "basic,Ensembl_canonical"). Split these into actual Python lists
+    # so they are stored as Arrow list<string> in Parquet.
+    for col in preset.list_columns:
+        if col in df.columns:
+            df[col] = df[col].apply(
+                lambda x: x.split(",") if isinstance(x, str) else None
+            )
 
     # Convert to Arrow Table
     table = pa.Table.from_pandas(df, preserve_index=False)
+
+    # Explicitly cast list columns to list<string> to guarantee the Arrow type
+    # regardless of whether the column was all-null or had mixed content.
+    for col in preset.list_columns:
+        if col in table.schema.names:
+            col_idx = table.schema.get_field_index(col)
+            list_array = pa.array(df[col].tolist(), type=pa.list_(pa.string()))
+            table = table.set_column(col_idx, col, list_array)
 
     # Write to Parquet
     if partition_cols:
@@ -84,8 +97,10 @@ def gtf_to_parquet(
             If provided, output will be a directory with Hive-style partitioning.
         compression: Compression codec ('zstd', 'snappy', 'gzip', 'none').
     """
-    # Parse GTF using pyranges (pyranges1 returns a DataFrame subclass)
-    gr = pr.read_gtf(str(gtf_path))
+    # Parse GTF using pyranges with duplicate_attr=True so that repeated attribute
+    # keys (e.g. tag "basic"; tag "Ensembl_canonical") are joined into a single
+    # comma-separated string rather than silently dropping all but the last value.
+    gr = pr.read_gtf(str(gtf_path), duplicate_attr=True)
     df = pd.DataFrame(gr)
 
     _convert_to_parquet(
