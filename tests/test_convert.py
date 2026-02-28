@@ -4,6 +4,8 @@ import tempfile
 from pathlib import Path
 
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pyranges1 as pr
 import pytest
 
@@ -36,6 +38,12 @@ def gencode_gtf_path():
 def gencode_gff_path():
     """Path to GENCODE GFF test file (gzipped)."""
     return Path(__file__).parent / "pyranges_data.gencode.gff.gz"
+
+
+@pytest.fixture
+def duplicate_tags_gtf_path():
+    """Path to GTF file with duplicate tag/ont attributes."""
+    return Path(__file__).parent / "gencode.example-duplicate-tags.gtf"
 
 
 @pytest.fixture
@@ -739,3 +747,120 @@ class TestGFFCompression:
             gr = read_gtf_parquet(parquet_path)
             assert isinstance(gr, pr.PyRanges)
             assert len(gr) > 0
+
+
+class TestDuplicateTags:
+    """Test that duplicate GTF attributes are stored as list<string> in Parquet."""
+
+    def test_list_columns_are_array_like(
+        self, duplicate_tags_gtf_path, temp_parquet_path
+    ):
+        """Tag and ont columns should contain array-like sequences, not plain strings.
+
+        PyArrow stores list<string> columns and pandas materialises them as
+        numpy.ndarray objects (not plain Python lists), so we check for the
+        sequence type rather than str.
+        """
+        gtf_to_parquet(
+            duplicate_tags_gtf_path,
+            temp_parquet_path,
+            preset=GENCODE_PRESET,
+        )
+
+        df = read_gtf_parquet(temp_parquet_path, as_pyranges=False)
+
+        for col in ("tag", "ont"):
+            if col in df.columns:
+                non_null = df[col].dropna()
+                for v in non_null:
+                    assert not isinstance(v, str), (
+                        f"'{col}' values should not be plain strings; got {v!r}"
+                    )
+                    assert hasattr(v, "__len__"), (
+                        f"'{col}' values should be sequence-like; got {type(v)!r}"
+                    )
+
+    def test_single_tag_stored_as_single_element_list(
+        self, duplicate_tags_gtf_path, temp_parquet_path
+    ):
+        """Rows with one tag value should be stored as a one-element sequence."""
+        gtf_to_parquet(
+            duplicate_tags_gtf_path,
+            temp_parquet_path,
+            preset=GENCODE_PRESET,
+        )
+
+        df = read_gtf_parquet(temp_parquet_path, as_pyranges=False)
+
+        # The first transcript row (ENST00000456328.2) has only tag "basic"
+        transcripts = df[df["Feature"] == "transcript"]
+        first_transcript = transcripts.iloc[0]
+        assert list(first_transcript["tag"]) == ["basic"]
+
+    def test_multiple_tags_stored_as_multi_element_list(
+        self, duplicate_tags_gtf_path, temp_parquet_path
+    ):
+        """Rows with multiple tag values should be stored as a multi-element sequence."""
+        gtf_to_parquet(
+            duplicate_tags_gtf_path,
+            temp_parquet_path,
+            preset=GENCODE_PRESET,
+        )
+
+        df = read_gtf_parquet(temp_parquet_path, as_pyranges=False)
+
+        # The second transcript (ENST00000450305.2) has tag "basic" and "Ensembl_canonical"
+        multi_tag_rows = df[df["tag"].apply(lambda x: x is not None and len(x) > 1)]
+        assert len(multi_tag_rows) > 0, "Expected rows with multiple tags"
+        assert any(
+            list(v) == ["basic", "Ensembl_canonical"] for v in multi_tag_rows["tag"]
+        )
+
+    def test_missing_tag_is_null(self, duplicate_tags_gtf_path, temp_parquet_path):
+        """Rows without a tag attribute should have null (None) in the tag column."""
+        gtf_to_parquet(
+            duplicate_tags_gtf_path,
+            temp_parquet_path,
+            preset=GENCODE_PRESET,
+        )
+
+        df = read_gtf_parquet(temp_parquet_path, as_pyranges=False)
+
+        # Gene rows in this file have no tag attribute
+        gene_rows = df[df["Feature"] == "gene"]
+        assert gene_rows["tag"].isna().all(), "Gene rows should have null tag"
+
+    def test_ont_multiple_values(self, duplicate_tags_gtf_path, temp_parquet_path):
+        """Rows with multiple ont values should be stored as a multi-element sequence."""
+        gtf_to_parquet(
+            duplicate_tags_gtf_path,
+            temp_parquet_path,
+            preset=GENCODE_PRESET,
+        )
+
+        df = read_gtf_parquet(temp_parquet_path, as_pyranges=False)
+
+        if "ont" in df.columns:
+            multi_ont_rows = df[df["ont"].apply(lambda x: x is not None and len(x) > 1)]
+            assert len(multi_ont_rows) > 0, "Expected rows with multiple ont values"
+            assert any(
+                list(v) == ["PGO:0000005", "PGO:0000019"] for v in multi_ont_rows["ont"]
+            )
+
+    def test_parquet_schema_uses_list_type(
+        self, duplicate_tags_gtf_path, temp_parquet_path
+    ):
+        """The Parquet schema should encode tag and ont as list<string>."""
+        gtf_to_parquet(
+            duplicate_tags_gtf_path,
+            temp_parquet_path,
+            preset=GENCODE_PRESET,
+        )
+
+        schema = pq.read_schema(temp_parquet_path)
+        for col in ("tag", "ont"):
+            if col in schema.names:
+                field = schema.field(col)
+                assert pa.types.is_list(field.type), (
+                    f"'{col}' should be list type in Parquet schema, got {field.type}"
+                )
