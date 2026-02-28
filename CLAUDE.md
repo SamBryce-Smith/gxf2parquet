@@ -18,7 +18,7 @@ src/gff2parquet/
 ├── convert.py:13     # gtf_to_parquet() function
 ├── read.py:10        # read_gtf_parquet() function
 ├── schema.py:19-41   # GENCODE_PRESET, ENSEMBL_PRESET, get_preset()
-└── cli.py            # CLI entry point: gtf-to-parquet
+└── cli.py            # CLI entry point: gff2parquet
 
 tests/test_convert.py # 6 test classes, multiple test methods
 benchmarks/benchmark.py # Performance comparison script
@@ -196,4 +196,4 @@ pr.assistant.export_docs("pr_docs.txt")
 
 ## CLI Reference
 
-See README.md for comprehensive CLI usage examples. The CLI command is `gtf-to-parquet`.
+See README.md for comprehensive CLI usage examples. The CLI command is `gff2parquet`.

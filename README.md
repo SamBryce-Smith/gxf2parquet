@@ -62,16 +62,16 @@ The configured hooks will automatically run before each commit to:
 
 ```bash
 # Basic conversion
-gtf-to-parquet annotations.gtf annotations.parquet
+gff2parquet annotations.gtf annotations.parquet
 
 # With partitioning for faster filtered reads
-gtf-to-parquet annotations.gtf annotations.parquet --partition-cols Chromosome Feature
+gff2parquet annotations.gtf annotations.parquet --partition-cols Chromosome Feature
 
 # Specify schema preset (gencode or ensembl)
-gtf-to-parquet annotations.gtf annotations.parquet --preset ensembl
+gff2parquet annotations.gtf annotations.parquet --preset ensembl
 
 # Choose compression (zstd, snappy, gzip, none)
-gtf-to-parquet annotations.gtf annotations.parquet --compression zstd
+gff2parquet annotations.gtf annotations.parquet --compression zstd
 ```
 
 ### Python API
