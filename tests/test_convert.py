@@ -463,30 +463,32 @@ class TestIntegerColumns:
     """Test integer column support in schema presets."""
 
     @pytest.mark.parametrize("gtf_fixture,preset", GTF_FIXTURES)
-    def test_exon_number_is_integer(
+    def test_exon_number_is_int32(
         self, gtf_fixture, preset, temp_parquet_path, request
     ):
-        """Test that exon_number is stored and read back as an integer dtype."""
+        """Test that exon_number is stored and read back as nullable Int32."""
         gtf_path = request.getfixturevalue(gtf_fixture)
 
         gtf_to_parquet(gtf_path, temp_parquet_path, preset=preset)
         df = read_gtf_parquet(temp_parquet_path, as_pyranges=False)
 
         if "exon_number" in df.columns:
-            assert pd.api.types.is_integer_dtype(
-                df["exon_number"]
-            ), "exon_number should be an integer dtype"
+            assert df["exon_number"].dtype == pd.Int32Dtype(), (
+                "exon_number should be nullable Int32"
+            )
 
-    def test_schema_preset_integer_columns_field(self):
-        """Test that SchemaPreset exposes integer_columns and presets include exon_number."""
+    def test_schema_preset_int_columns_fields(self):
+        """Test that SchemaPreset exposes int32_columns/int64_columns and presets include exon_number."""
         from gff2parquet.schema import ENSEMBL_PRESET, GENCODE_PRESET, SchemaPreset
 
         preset = SchemaPreset()
-        assert hasattr(preset, "integer_columns")
-        assert preset.integer_columns == []
+        assert hasattr(preset, "int32_columns")
+        assert hasattr(preset, "int64_columns")
+        assert preset.int32_columns == []
+        assert preset.int64_columns == []
 
-        assert "exon_number" in GENCODE_PRESET.integer_columns
-        assert "exon_number" in ENSEMBL_PRESET.integer_columns
+        assert "exon_number" in GENCODE_PRESET.int32_columns
+        assert "exon_number" in ENSEMBL_PRESET.int32_columns
 
 
 class TestCompression:

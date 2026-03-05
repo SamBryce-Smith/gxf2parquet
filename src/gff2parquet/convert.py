@@ -37,8 +37,11 @@ def _convert_to_parquet(
         if col in df.columns:
             df[col] = df[col].astype("category")
 
-    # Apply integer dtypes to specified columns (Int64 supports NaN)
-    for col in preset.integer_columns:
+    # Apply nullable integer dtypes to specified columns
+    for col in preset.int32_columns:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int32")
+    for col in preset.int64_columns:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
 
