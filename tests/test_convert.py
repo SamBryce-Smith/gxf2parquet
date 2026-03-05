@@ -434,10 +434,17 @@ class TestPresets:
 
         df = read_gtf_parquet(temp_parquet_path, as_pyranges=False)
 
-        # Categorical columns should be category dtype
-        for col in ["Chromosome", "Source", "Feature", "Strand"]:
+        # All categorical columns declared in the preset should round-trip as category
+        for col in preset.categorical_columns:
             if col in df.columns:
                 assert df[col].dtype.name == "category", f"{col} should be categorical"
+
+        # All column_dtypes columns should round-trip with an integer dtype
+        for col in preset.column_dtypes:
+            if col in df.columns:
+                assert pd.api.types.is_integer_dtype(
+                    df[col]
+                ), f"{col} should be integer dtype"
 
     @pytest.mark.parametrize("gtf_fixture,preset", GTF_FIXTURES)
     def test_preset_as_pyranges(self, gtf_fixture, preset, temp_parquet_path, request):
@@ -453,8 +460,8 @@ class TestPresets:
         gr = read_gtf_parquet(temp_parquet_path)
 
         assert isinstance(gr, pr.PyRanges)
-        # Categorical columns should be category dtype
-        for col in ["Chromosome", "Source", "Feature", "Strand"]:
+        # All categorical columns declared in the preset should round-trip as category
+        for col in preset.categorical_columns:
             if col in gr.columns:
                 assert gr[col].dtype.name == "category", f"{col} should be categorical"
 
