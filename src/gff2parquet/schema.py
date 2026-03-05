@@ -10,10 +10,12 @@ class SchemaPreset:
     Attributes:
         categorical_columns: Columns to convert to pandas Categorical dtype.
         list_columns: Columns that contain multiple values (stored as list<string>).
+        integer_columns: Columns to convert to integer dtype (Int64, nullable).
     """
 
     categorical_columns: list[str] = field(default_factory=list)
     list_columns: list[str] = field(default_factory=list)
+    integer_columns: list[str] = field(default_factory=list)
 
 
 BASE_PRESET = SchemaPreset(
@@ -36,6 +38,7 @@ GENCODE_PRESET = SchemaPreset(
         "transcript_type",
     ],
     list_columns=["tag", "ont"],
+    integer_columns=["exon_number"],
 )
 
 ENSEMBL_PRESET = SchemaPreset(
@@ -48,6 +51,7 @@ ENSEMBL_PRESET = SchemaPreset(
         "transcript_biotype",
     ],
     list_columns=["tag"],
+    integer_columns=["exon_number"],
 )
 
 _PRESETS = {

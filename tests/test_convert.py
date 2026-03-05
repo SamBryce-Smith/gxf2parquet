@@ -459,6 +459,36 @@ class TestPresets:
                 assert gr[col].dtype.name == "category", f"{col} should be categorical"
 
 
+class TestIntegerColumns:
+    """Test integer column support in schema presets."""
+
+    @pytest.mark.parametrize("gtf_fixture,preset", GTF_FIXTURES)
+    def test_exon_number_is_integer(
+        self, gtf_fixture, preset, temp_parquet_path, request
+    ):
+        """Test that exon_number is stored and read back as an integer dtype."""
+        gtf_path = request.getfixturevalue(gtf_fixture)
+
+        gtf_to_parquet(gtf_path, temp_parquet_path, preset=preset)
+        df = read_gtf_parquet(temp_parquet_path, as_pyranges=False)
+
+        if "exon_number" in df.columns:
+            assert pd.api.types.is_integer_dtype(
+                df["exon_number"]
+            ), "exon_number should be an integer dtype"
+
+    def test_schema_preset_integer_columns_field(self):
+        """Test that SchemaPreset exposes integer_columns and presets include exon_number."""
+        from gff2parquet.schema import ENSEMBL_PRESET, GENCODE_PRESET, SchemaPreset
+
+        preset = SchemaPreset()
+        assert hasattr(preset, "integer_columns")
+        assert preset.integer_columns == []
+
+        assert "exon_number" in GENCODE_PRESET.integer_columns
+        assert "exon_number" in ENSEMBL_PRESET.integer_columns
+
+
 class TestCompression:
     """Test compression options."""
 
