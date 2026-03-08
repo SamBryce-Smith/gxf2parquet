@@ -108,8 +108,8 @@ gr = read_gtf_parquet(
     columns=["Chromosome", "Start", "End", "Strand", "Feature", "gene_name"],
     filters=[
         ("Chromosome", "==", "chr2"),
-        ("Start", "<=", 55000),
-        ("End", ">=", 50000),
+        ("Start", ">=", 50000),
+        ("End", "<=", 55000),
         ("Strand", "==", "+"),
     ],
 )
