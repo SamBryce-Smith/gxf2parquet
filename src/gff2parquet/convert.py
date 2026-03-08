@@ -37,6 +37,11 @@ def _convert_to_parquet(
         if col in df.columns:
             df[col] = df[col].astype("category")
 
+    # Apply explicit dtype overrides (e.g. nullable integers such as "Int16")
+    for col, dtype in preset.column_dtypes.items():
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce").astype(dtype)
+
     # Handle list columns - these are already parsed as lists by pyranges
     # Just ensure they're properly typed for Arrow
     # (pyranges stores multi-value attributes as comma-separated strings or lists)

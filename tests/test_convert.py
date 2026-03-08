@@ -434,10 +434,17 @@ class TestPresets:
 
         df = read_gtf_parquet(temp_parquet_path, as_pyranges=False)
 
-        # Categorical columns should be category dtype
-        for col in ["Chromosome", "Source", "Feature", "Strand"]:
+        # All categorical columns declared in the preset should round-trip as category
+        for col in preset.categorical_columns:
             if col in df.columns:
                 assert df[col].dtype.name == "category", f"{col} should be categorical"
+
+        # All column_dtypes columns should round-trip with an integer dtype
+        for col in preset.column_dtypes:
+            if col in df.columns:
+                assert pd.api.types.is_integer_dtype(df[col]), (
+                    f"{col} should be integer dtype"
+                )
 
     @pytest.mark.parametrize("gtf_fixture,preset", GTF_FIXTURES)
     def test_preset_as_pyranges(self, gtf_fixture, preset, temp_parquet_path, request):
@@ -453,10 +460,67 @@ class TestPresets:
         gr = read_gtf_parquet(temp_parquet_path)
 
         assert isinstance(gr, pr.PyRanges)
-        # Categorical columns should be category dtype
-        for col in ["Chromosome", "Source", "Feature", "Strand"]:
+        # All categorical columns declared in the preset should round-trip as category
+        for col in preset.categorical_columns:
             if col in gr.columns:
                 assert gr[col].dtype.name == "category", f"{col} should be categorical"
+
+
+class TestColumnDtypes:
+    """Test column_dtypes support in schema presets."""
+
+    @pytest.mark.parametrize("gtf_fixture,preset", GTF_FIXTURES)
+    def test_exon_number_is_integer(
+        self, gtf_fixture, preset, temp_parquet_path, request
+    ):
+        """Test that exon_number is stored and read back as a nullable integer."""
+        gtf_path = request.getfixturevalue(gtf_fixture)
+
+        gtf_to_parquet(gtf_path, temp_parquet_path, preset=preset)
+        df = read_gtf_parquet(temp_parquet_path, as_pyranges=False)
+
+        if "exon_number" in df.columns:
+            assert pd.api.types.is_integer_dtype(df["exon_number"]), (
+                "exon_number should be a nullable integer dtype"
+            )
+            # Exon rows should have integer values; non-exon rows should be NA
+            exon_mask = df.get("Feature") == "exon" if "Feature" in df.columns else None
+            if exon_mask is not None:
+                assert df.loc[exon_mask, "exon_number"].notna().all(), (
+                    "All exon rows should have a non-null exon_number"
+                )
+
+    def test_schema_preset_column_dtypes_field(self):
+        """Test that SchemaPreset exposes column_dtypes and presets populate it."""
+        from gff2parquet.schema import ENSEMBL_PRESET, GENCODE_PRESET, SchemaPreset
+
+        # Default SchemaPreset has empty column_dtypes
+        preset = SchemaPreset()
+        assert hasattr(preset, "column_dtypes")
+        assert preset.column_dtypes == {}
+
+        # Both presets include exon_number as Int16
+        assert "exon_number" in GENCODE_PRESET.column_dtypes
+        assert GENCODE_PRESET.column_dtypes["exon_number"] == "Int16"
+        assert "exon_number" in ENSEMBL_PRESET.column_dtypes
+        assert ENSEMBL_PRESET.column_dtypes["exon_number"] == "Int16"
+
+    def test_custom_column_dtypes(self, ensembl_gtf_path, temp_parquet_path):
+        """Test that custom column_dtypes are applied correctly."""
+        from gff2parquet.schema import SchemaPreset
+
+        custom_preset = SchemaPreset(
+            categorical_columns=["Chromosome", "Feature", "Strand"],
+            column_dtypes={"exon_number": "Int32"},
+        )
+
+        gtf_to_parquet(ensembl_gtf_path, temp_parquet_path, preset=custom_preset)
+        df = read_gtf_parquet(temp_parquet_path, as_pyranges=False)
+
+        if "exon_number" in df.columns:
+            assert df["exon_number"].dtype == pd.Int32Dtype(), (
+                "exon_number should be Int32 when specified in column_dtypes"
+            )
 
 
 class TestCompression:
