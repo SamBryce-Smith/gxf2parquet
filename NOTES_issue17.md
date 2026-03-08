@@ -15,14 +15,14 @@ Refactor `gff2parquet` CLI into two subcommands (`build` and `query`) and add a
 | Step | Status | Description |
 |------|--------|-------------|
 | **1** | ✅ Done (cc0abb5) | Refactor CLI to subcommand structure (`build` + placeholder `query`) |
-| **2** | ⬜ TODO | Auto-detect input format in `build` (`.gtf` / `.gff3` / `.gz`) |
-| **3** | ⬜ TODO | Store source format in Parquet metadata (`gff2parquet.source_format`) |
-| **4** | ⬜ TODO | Region and filter parsing utilities (`filters.py`) |
-| **5** | ⬜ TODO | Output writers (`write.py`: `write_gtf`, `write_gff3`, `write_parquet`) |
-| **6** | ⬜ TODO | `query_gff_parquet()` library function (`query.py`) |
-| **7** | ⬜ TODO | Wire up full `query` CLI subcommand |
-| **8** | ⬜ TODO | Update exports (`__init__.py`) and README |
-| **9** | ⬜ TODO | Tests (`test_filters.py`, `test_write.py`, `test_query.py`, `test_cli.py`, `test_metadata.py`) |
+| **2** | ✅ Done | Auto-detect input format in `build` (`.gtf` / `.gff3` / `.gz`) |
+| **3** | ✅ Done | Store source format in Parquet metadata (`gff2parquet.source_format`) |
+| **4** | ✅ Done | Region and filter parsing utilities (`filters.py`) |
+| **5** | ✅ Done | Output writers (`write.py`: `write_gtf`, `write_gff3`, `write_parquet`) |
+| **6** | ✅ Done | `query_gff_parquet()` library function (`query.py`) |
+| **7** | ✅ Done | Wire up full `query` CLI subcommand |
+| **8** | ✅ Done | Update exports (`__init__.py`) |
+| **9** | ✅ Done | Tests (`test_filters.py`, `test_query.py`, `test_cli.py`, `test_metadata.py`) |
 
 ---
 
