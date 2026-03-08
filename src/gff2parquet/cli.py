@@ -123,6 +123,23 @@ def main(argv: list[str] | None = None) -> int:
             "The input format is auto-detected from the file extension "
             "(.gtf, .gff, .gff3, with optional .gz)."
         ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""\
+examples:
+  # GENCODE GTF (default preset)
+  gff2parquet build gencode.v47.annotation.gtf.gz gencode.parquet
+
+  # Partition by Chromosome and Feature for faster region/feature queries
+  gff2parquet build gencode.v47.annotation.gtf.gz gencode.parquet \\
+      --partition-cols Chromosome Feature
+
+  # Ensembl GTF with matching preset
+  gff2parquet build Homo_sapiens.GRCh38.113.gtf.gz ensembl.parquet --preset ensembl
+
+  # GFF3 input (auto-detected), snappy compression
+  gff2parquet build Homo_sapiens.GRCh38.113.gff3.gz ensembl.parquet \\
+      --preset ensembl --compression snappy
+""",
     )
     build_parser.add_argument(
         "input",
@@ -161,6 +178,27 @@ def main(argv: list[str] | None = None) -> int:
             "Query a GFF/GTF Parquet file by region, strand, or column filters "
             "and write the results to a file or stdout."
         ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""\
+examples:
+  # All genes on chr1, written as GTF to stdout
+  gff2parquet query gencode.parquet --region chr1 --filter Feature eq gene
+
+  # Region query with strand, select columns, write to GTF file
+  gff2parquet query gencode.parquet \\
+      --region chr1:11869-14409 --strand plus \\
+      --columns Chromosome Start End Strand Feature gene_name \\
+      --output chr1_region.gtf
+
+  # Filter by feature set and gene type, save as Parquet for downstream use
+  gff2parquet query gencode.parquet \\
+      --filter Feature isin exon,CDS \\
+      --filter gene_type eq protein_coding \\
+      --output coding_exons.parquet
+
+  # Whole chromosome, GFF3 output
+  gff2parquet query gencode.parquet --region chr2 --output chr2.gff3
+""",
     )
     query_parser.add_argument(
         "input",

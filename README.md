@@ -61,17 +61,37 @@ The configured hooks will automatically run before each commit to:
 ### CLI Usage
 
 ```bash
-# Basic conversion
-gff2parquet annotations.gtf annotations.parquet
+# Build: convert GENCODE GTF to Parquet (default gencode preset)
+gff2parquet build gencode.v47.annotation.gtf.gz gencode.parquet
 
-# With partitioning for faster filtered reads
-gff2parquet annotations.gtf annotations.parquet --partition-cols Chromosome Feature
+# Build: partition by Chromosome and Feature for faster region/feature queries
+gff2parquet build gencode.v47.annotation.gtf.gz gencode.parquet \
+    --partition-cols Chromosome Feature
 
-# Specify schema preset (gencode or ensembl)
-gff2parquet annotations.gtf annotations.parquet --preset ensembl
+# Build: Ensembl GTF with matching preset
+gff2parquet build Homo_sapiens.GRCh38.113.gtf.gz ensembl.parquet --preset ensembl
 
-# Choose compression (zstd, snappy, gzip, none)
-gff2parquet annotations.gtf annotations.parquet --compression zstd
+# Build: GFF3 input (auto-detected from extension), snappy compression
+gff2parquet build Homo_sapiens.GRCh38.113.gff3.gz ensembl.parquet \
+    --preset ensembl --compression snappy
+
+# Query: all genes on chr1, written as GTF to stdout
+gff2parquet query gencode.parquet --region chr1 --filter Feature eq gene
+
+# Query: region with strand filter, select columns, write to GTF file
+gff2parquet query gencode.parquet \
+    --region chr1:11869-14409 --strand plus \
+    --columns Chromosome Start End Strand Feature gene_name \
+    --output chr1_region.gtf
+
+# Query: filter by feature set and gene type, save as Parquet for downstream use
+gff2parquet query gencode.parquet \
+    --filter Feature isin exon,CDS \
+    --filter gene_type eq protein_coding \
+    --output coding_exons.parquet
+
+# Query: whole chromosome, GFF3 output
+gff2parquet query gencode.parquet --region chr2 --output chr2.gff3
 ```
 
 ### Python API
@@ -79,40 +99,35 @@ gff2parquet annotations.gtf annotations.parquet --compression zstd
 ```python
 from gff2parquet import gtf_to_parquet, read_gtf_parquet, GENCODE_PRESET
 
-# Convert GTF to Parquet
+# Convert GTF to Parquet (partitioned for efficient filtered reads)
 gtf_to_parquet(
-    "annotations.gtf",
-    "annotations.parquet",
+    "gencode.v47.annotation.gtf.gz",
+    "gencode.parquet",
     preset=GENCODE_PRESET,
     partition_cols=["Chromosome", "Feature"],
 )
 
-# Read as PyRanges object (default) with 0-based coordinates
+# Read as PyRanges object (default, 0-based coordinates) with predicate pushdown
 gr = read_gtf_parquet(
-    "annotations.parquet",
-    columns=["Chromosome", "Start", "End", "gene_name"],
+    "gencode.parquet",
+    columns=["Chromosome", "Start", "End", "gene_name", "gene_type"],
     filters=[("Chromosome", "==", "chr1"), ("Feature", "==", "gene")],
 )
 
-# Or read as pandas DataFrame with 1-based coordinates
-df = read_gtf_parquet(
-    "annotations.parquet",
-    columns=["Chromosome", "Start", "End", "gene_name"],
-    filters=[("Chromosome", "==", "chr1"), ("Feature", "==", "gene")],
-    as_pyranges=False,
-)
-
-# Region-based query: filter by genomic coordinates
+# Region query with strand — combines coordinate range and column filters
 gr = read_gtf_parquet(
-    "annotations.parquet",
+    "gencode.parquet",
     columns=["Chromosome", "Start", "End", "Strand", "Feature", "gene_name"],
     filters=[
-        ("Chromosome", "==", "chr2"),
-        ("Start", ">=", 50000),
-        ("End", "<=", 55000),
+        ("Chromosome", "==", "chr1"),
+        ("Start", ">=", 11869),
+        ("End", "<=", 14409),
         ("Strand", "==", "+"),
     ],
 )
+
+# Read as pandas DataFrame with 1-based coordinates (as stored)
+df = read_gtf_parquet("gencode.parquet", as_pyranges=False)
 ```
 
 ## Testing
