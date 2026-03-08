@@ -158,43 +158,43 @@ Runs per benchmark: 3
 ============================================================
 
 Converting GTF to Parquet...
-Conversion time: 6.88s
+Conversion time: 8.97s
 
 Converting GTF to Parquet (partitioned by Chromosome, Feature)...
-Conversion time (partitioned): 6.87s
+Conversion time (partitioned): 8.62s
 
 ============================================================
 FILE SIZE COMPARISON
 ============================================================
 GTF file:              189.99 MB
 Parquet file:          5.22 MB
-Parquet (partitioned): 8.48 MB
+Parquet (partitioned): 8.49 MB
 Compression ratio:     2.7%
 
 ============================================================
 FULL READ TIME COMPARISON
 ============================================================
-GTF read time (pyranges):  22.697s
+GTF read time (pyranges):  31.324s
 GTF peak memory:           489.63 MB
-Parquet read time:         0.275s
-Parquet peak memory:       76.32 MB
-Speedup (time):            82.6x
-Memory reduction (peak):   84.4%
+Parquet read time:         0.341s
+Parquet peak memory:       60.95 MB
+Speedup (time):            91.8x
+Memory reduction (peak):   87.6%
 
 ============================================================
 IN-MEMORY SIZE COMPARISON
 ============================================================
 GTF DataFrame memory:     511.06 MB
-Parquet DataFrame memory: 384.33 MB
+Parquet DataFrame memory: 287.09 MB
 
 ============================================================
 FILTERED READ COMPARISON (chr2, gene)
 ============================================================
-Naive approach (GTF + pandas filter):  23.780s
+Naive approach (GTF + pandas filter):  31.605s
 Naive peak memory:                      489.62 MB
-Parquet filtered read:                  0.015s
-Parquet peak memory:                    609.05 KB
-Speedup (time):                         1567.7x
+Parquet filtered read:                  0.022s
+Parquet peak memory:                    609.87 KB
+Speedup (time):                         1423.5x
 Memory reduction (peak):                99.9%
 
 Filtered rows:         4,267
@@ -204,11 +204,11 @@ Memory reduction:      99.8%
 ============================================================
 REGION QUERY COMPARISON (chr2:30000-500000, +)
 ============================================================
-Naive approach (GTF + gr.loci):  23.384s
+Naive approach (GTF + gr.loci):  30.804s
 Naive peak memory:               489.62 MB
-Parquet region query:            0.014s
-Parquet peak memory:             35.11 KB
-Speedup (time):                  1643.1x
+Parquet region query:            0.019s
+Parquet peak memory:             36.17 KB
+Speedup (time):                  1589.5x
 Memory reduction (peak):         100.0%
 
 Region query rows:     212
@@ -221,7 +221,7 @@ SUMMARY
 Rows in dataset:       435,497
 Columns:               25
 File size reduction:   97.3%
-Read speedup:          82.6x
+Read speedup:          91.8x
 ```
 
 ## Schema Presets
