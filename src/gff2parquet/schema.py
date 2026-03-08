@@ -10,16 +10,16 @@ class SchemaPreset:
     Attributes:
         categorical_columns: Columns to convert to pandas Categorical dtype.
         list_columns: Columns that contain multiple values (stored as list<string>).
-        column_dtypes: Explicit dtype overrides for individual columns, expressed as
-            pandas dtype strings (e.g. ``{"exon_number": "Int16"}``).  Applied after
-            categorical conversion.  Use pandas nullable integer types (capital-I
-            ``"Int8"``, ``"Int16"``, ``"Int32"``) for integer-valued string columns
-            that may contain NULLs.
+        int16_columns: Columns to cast to pandas nullable Int16 dtype.
+        int32_columns: Columns to cast to pandas nullable Int32 dtype.
+        int64_columns: Columns to cast to pandas nullable Int64 dtype.
     """
 
     categorical_columns: list[str] = field(default_factory=list)
     list_columns: list[str] = field(default_factory=list)
-    column_dtypes: dict[str, str] = field(default_factory=dict)
+    int16_columns: list[str] = field(default_factory=list)
+    int32_columns: list[str] = field(default_factory=list)
+    int64_columns: list[str] = field(default_factory=list)
 
 
 BASE_PRESET = SchemaPreset(
@@ -48,11 +48,11 @@ GENCODE_PRESET = SchemaPreset(
         "transcript_support_level", # TSL: "1"–"5", "NA"
     ],
     list_columns=["tag", "ont"],
-    column_dtypes={
+    int16_columns=[
         # exon_number is an ordinal integer (max ~363 in human GENCODE); nullable
         # because gene/transcript rows carry no exon_number value.
-        "exon_number": "Int16",
-    },
+        "exon_number",
+    ],
 )
 
 ENSEMBL_PRESET = SchemaPreset(
@@ -72,13 +72,13 @@ ENSEMBL_PRESET = SchemaPreset(
         "transcript_support_level", # TSL: "1"–"5", "NA"
     ],
     list_columns=["tag"],
-    column_dtypes={
+    int16_columns=[
         # Integer-valued string fields; nullable because only some feature rows carry them.
-        "exon_number":        "Int16",
-        "gene_version":       "Int16",
-        "transcript_version": "Int16",
-        "exon_version":       "Int16",
-    },
+        "exon_number",
+        "gene_version",
+        "transcript_version",
+        "exon_version",
+    ],
 )
 
 _PRESETS = {

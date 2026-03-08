@@ -439,8 +439,8 @@ class TestPresets:
             if col in df.columns:
                 assert df[col].dtype.name == "category", f"{col} should be categorical"
 
-        # All column_dtypes columns should round-trip with an integer dtype
-        for col in preset.column_dtypes:
+        # All integer columns declared in the preset should round-trip as integer dtype
+        for col in [*preset.int16_columns, *preset.int32_columns, *preset.int64_columns]:
             if col in df.columns:
                 assert pd.api.types.is_integer_dtype(
                     df[col]
