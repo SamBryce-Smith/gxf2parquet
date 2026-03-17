@@ -7,7 +7,7 @@ import pandas as pd
 import pyranges1 as pr
 import pytest
 
-from gff2parquet import (
+from gxf2parquet import (
     ENSEMBL_PRESET,
     GENCODE_PRESET,
     gff_to_parquet,
