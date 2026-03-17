@@ -1,4 +1,4 @@
-# gff2parquet
+# gxf2parquet
 
 Parse and transform Gene Transfer Format (GTF) annotation files to Apache Parquet format for more efficient and powerful downstream analysis.
 
@@ -21,7 +21,7 @@ Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 ### General users
 
 ```bash
-uv pip install gff2parquet
+uv pip install gxf2parquet
 ```
 
 ### Developers
@@ -62,22 +62,22 @@ The configured hooks will automatically run before each commit to:
 
 ```bash
 # Basic conversion
-gff2parquet annotations.gtf annotations.parquet
+gxf2parquet annotations.gtf annotations.parquet
 
 # With partitioning for faster filtered reads
-gff2parquet annotations.gtf annotations.parquet --partition-cols Chromosome Feature
+gxf2parquet annotations.gtf annotations.parquet --partition-cols Chromosome Feature
 
 # Specify schema preset (gencode or ensembl)
-gff2parquet annotations.gtf annotations.parquet --preset ensembl
+gxf2parquet annotations.gtf annotations.parquet --preset ensembl
 
 # Choose compression (zstd, snappy, gzip, none)
-gff2parquet annotations.gtf annotations.parquet --compression zstd
+gxf2parquet annotations.gtf annotations.parquet --compression zstd
 ```
 
 ### Python API
 
 ```python
-from gff2parquet import gtf_to_parquet, read_gtf_parquet, GENCODE_PRESET
+from gxf2parquet import gtf_to_parquet, read_gtf_parquet, GENCODE_PRESET
 
 # Convert GTF to Parquet
 gtf_to_parquet(

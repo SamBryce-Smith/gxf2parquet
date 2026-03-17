@@ -13,12 +13,12 @@ This is a GTF to Parquet conversion utility for genomics workflows. It converts 
 ## Quick Reference
 
 ```
-src/gff2parquet/
+src/gxf2parquet/
 ├── __init__.py       # Public API exports
 ├── convert.py:13     # gtf_to_parquet() function
 ├── read.py:10        # read_gtf_parquet() function
 ├── schema.py:19-41   # GENCODE_PRESET, ENSEMBL_PRESET, get_preset()
-└── cli.py            # CLI entry point: gff2parquet
+└── cli.py            # CLI entry point: gxf2parquet
 
 tests/test_convert.py # 6 test classes, multiple test methods
 benchmarks/benchmark.py # Performance comparison script
@@ -26,7 +26,7 @@ benchmarks/benchmark.py # Performance comparison script
 
 ## API Reference
 
-### `gtf_to_parquet()` (src/gff2parquet/convert.py:13)
+### `gtf_to_parquet()` (src/gxf2parquet/convert.py:13)
 
 ```python
 def gtf_to_parquet(
@@ -41,7 +41,7 @@ def gtf_to_parquet(
 
 Converts a GTF file to Parquet format with optional partitioning.
 
-### `read_gtf_parquet()` (src/gff2parquet/read.py:10)
+### `read_gtf_parquet()` (src/gxf2parquet/read.py:10)
 
 ```python
 def read_gtf_parquet(
@@ -86,13 +86,13 @@ uv run prek run --all-files
 
 ## Schema Presets
 
-### GENCODE_PRESET (src/gff2parquet/schema.py:19)
+### GENCODE_PRESET (src/gxf2parquet/schema.py:19)
 
 **Categorical columns:** Chromosome, Source, Feature, Strand, gene_type, transcript_type
 **List columns:** tag, ont
 **Use for:** GENCODE annotation files
 
-### ENSEMBL_PRESET (src/gff2parquet/schema.py:31)
+### ENSEMBL_PRESET (src/gxf2parquet/schema.py:31)
 
 **Categorical columns:** Chromosome, Source, Feature, Strand, gene_biotype, transcript_biotype
 **List columns:** tag
@@ -101,7 +101,7 @@ uv run prek run --all-files
 ### Usage in code
 
 ```python
-from gff2parquet import GENCODE_PRESET, ENSEMBL_PRESET, get_preset
+from gxf2parquet import GENCODE_PRESET, ENSEMBL_PRESET, get_preset
 
 # Direct import
 gtf_to_parquet("file.gtf", "file.parquet", preset=GENCODE_PRESET)
@@ -139,7 +139,7 @@ parquet_end = pyranges_end          # already correct (half-open end equals clos
 ## Common Query Patterns
 
 ```python
-from gff2parquet import read_gtf_parquet
+from gxf2parquet import read_gtf_parquet
 
 # Filter by chromosome and feature type (predicate pushdown)
 gr = read_gtf_parquet(
@@ -196,4 +196,4 @@ pr.assistant.export_docs("pr_docs.txt")
 
 ## CLI Reference
 
-See README.md for comprehensive CLI usage examples. The CLI command is `gff2parquet`.
+See README.md for comprehensive CLI usage examples. The CLI command is `gxf2parquet`.

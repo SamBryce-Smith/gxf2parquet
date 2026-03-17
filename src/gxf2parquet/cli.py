@@ -11,7 +11,7 @@ from .schema import get_preset
 def main(argv: list[str] | None = None) -> int:
     """Main entry point for the CLI."""
     parser = argparse.ArgumentParser(
-        prog="gff2parquet",
+        prog="gxf2parquet",
         description="Convert GTF annotation files to Parquet format.",
     )
 
