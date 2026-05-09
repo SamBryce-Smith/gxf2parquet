@@ -7,14 +7,14 @@ import pyarrow.parquet as pq
 import pyranges1 as pr
 
 
-def read_gtf_parquet(
+def read_gxf_parquet(
     parquet_path: str | Path,
     *,
     columns: list[str] | None = None,
     filters: list[tuple] | list[list[tuple]] | None = None,
     as_pyranges: bool = True,
 ) -> pr.PyRanges | pd.DataFrame:
-    """Read a GTF Parquet file into a PyRanges object or pandas DataFrame.
+    """Read a GXF (GTF/GFF) Parquet file into a PyRanges object or pandas DataFrame.
 
     Args:
         parquet_path: Path to Parquet file or partitioned dataset directory.
@@ -30,16 +30,16 @@ def read_gtf_parquet(
 
     Examples:
         # Read as PyRanges (default)
-        gr = read_gtf_parquet("annotations.parquet")
+        gr = read_gxf_parquet("annotations.parquet")
 
         # Read as DataFrame with 1-based coordinates
-        df = read_gtf_parquet("annotations.parquet", as_pyranges=False)
+        df = read_gxf_parquet("annotations.parquet", as_pyranges=False)
 
         # Read specific columns
-        gr = read_gtf_parquet("annotations.parquet", columns=["Chromosome", "Start", "End", "gene_name"])
+        gr = read_gxf_parquet("annotations.parquet", columns=["Chromosome", "Start", "End", "gene_name"])
 
         # Read with filters (predicate pushdown)
-        gr = read_gtf_parquet(
+        gr = read_gxf_parquet(
             "annotations.parquet",
             filters=[("Chromosome", "==", "chr1"), ("Feature", "==", "gene")]
         )

@@ -77,7 +77,7 @@ gxf2parquet annotations.gtf annotations.parquet --compression zstd
 ### Python API
 
 ```python
-from gxf2parquet import gtf_to_parquet, read_gtf_parquet, GENCODE_PRESET
+from gxf2parquet import gtf_to_parquet, read_gxf_parquet, GENCODE_PRESET
 
 # Convert GTF to Parquet
 gtf_to_parquet(
@@ -88,14 +88,14 @@ gtf_to_parquet(
 )
 
 # Read as PyRanges object (default) with 0-based coordinates
-gr = read_gtf_parquet(
+gr = read_gxf_parquet(
     "annotations.parquet",
     columns=["Chromosome", "Start", "End", "gene_name"],
     filters=[("Chromosome", "==", "chr1"), ("Feature", "==", "gene")],
 )
 
 # Or read as pandas DataFrame with 1-based coordinates
-df = read_gtf_parquet(
+df = read_gxf_parquet(
     "annotations.parquet",
     columns=["Chromosome", "Start", "End", "gene_name"],
     filters=[("Chromosome", "==", "chr1"), ("Feature", "==", "gene")],
@@ -103,7 +103,7 @@ df = read_gtf_parquet(
 )
 
 # Region-based query: filter by genomic coordinates
-gr = read_gtf_parquet(
+gr = read_gxf_parquet(
     "annotations.parquet",
     columns=["Chromosome", "Start", "End", "Strand", "Feature", "gene_name"],
     filters=[
@@ -235,7 +235,7 @@ Two presets are available for common GTF sources:
 
 The package stores GTF-native coordinates (1-based, closed intervals) in the Parquet file.
 
-When reading with `read_gtf_parquet()`:
+When reading with `read_gxf_parquet()`:
 - **Default behavior** (`as_pyranges=True`): Returns a PyRanges object with 0-based, half-open coordinates (Start coordinate is automatically converted by subtracting 1)
 - **DataFrame mode** (`as_pyranges=False`): Returns a pandas DataFrame with 1-based coordinates as stored in the Parquet file
 
