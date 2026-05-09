@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import tempfile
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -24,13 +24,7 @@ def write_gtf(df: pd.DataFrame, output: Path | None = None) -> None:
         output: Output file path, or ``None`` to write to stdout.
     """
     gr = _df_to_pyranges(df)
-    if output is None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmp_path = Path(tmpdir) / "out.gtf"
-            gr.to_gtf(str(tmp_path))
-            print(tmp_path.read_text(), end="")
-    else:
-        gr.to_gtf(str(output))
+    gr.to_gtf(sys.stdout if output is None else str(output))
 
 
 _GFF3_HEADER = "##gff-version 3\n"
@@ -44,16 +38,11 @@ def write_gff3(df: pd.DataFrame, output: Path | None = None) -> None:
         output: Output file path, or ``None`` to write to stdout.
     """
     gr = _df_to_pyranges(df)
+    content = _GFF3_HEADER + gr.to_gff3()
     if output is None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmp_path = Path(tmpdir) / "out.gff3"
-            gr.to_gff3(str(tmp_path))
-            print(_GFF3_HEADER + tmp_path.read_text(), end="")
+        sys.stdout.write(content)
     else:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmp_path = Path(tmpdir) / "out.gff3"
-            gr.to_gff3(str(tmp_path))
-            output.write_text(_GFF3_HEADER + tmp_path.read_text())
+        output.write_text(content)
 
 
 def write_parquet(
