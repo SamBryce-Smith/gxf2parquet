@@ -1,6 +1,8 @@
 """Tests for query_gxf_parquet()."""
 
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
 import pyranges1 as pr
 
@@ -15,6 +17,25 @@ def parquet_from_ensembl(tmp_path):
     pr.example_data.ensembl_gtf.to_gtf(str(gtf_path))
     parquet_path = tmp_path / "ensembl.parquet"
     gtf_to_parquet(gtf_path, parquet_path, preset=ENSEMBL_PRESET)
+    return parquet_path
+
+
+@pytest.fixture
+def multi_chrom_parquet(tmp_path):
+    """Synthetic Parquet with two chromosomes and both strands for multi-region tests."""
+    data = {
+        "Chromosome": ["chr1", "chr1", "chr1", "chr2", "chr2", "chr2"],
+        "Start":      [1001,   2001,   3001,   5001,   6001,   7001],
+        "End":        [1500,   2500,   3500,   5500,   6500,   7500],
+        "Strand":     ["+",    "+",    "-",    "+",    "-",    "-"],
+        "Feature":    ["gene", "exon", "gene", "gene", "exon", "gene"],
+        "Source":     ["test"] * 6,
+        "Score":      ["."] * 6,
+        "Frame":      ["."] * 6,
+    }
+    table = pa.Table.from_pandas(pd.DataFrame(data), preserve_index=False)
+    parquet_path = tmp_path / "multi_chrom.parquet"
+    pq.write_table(table, str(parquet_path))
     return parquet_path
 
 
@@ -74,15 +95,9 @@ class TestQueryGxfParquetDataFrame:
         assert (df_plus["Strand"] == "+").all()
         assert (df_minus["Strand"] == "-").all()
 
-    def test_multiple_regions_or_combined(self, parquet_from_ensembl):
-        all_df = query_gxf_parquet(parquet_from_ensembl, as_pyranges=False)
-        chroms = all_df["Chromosome"].unique()
-        if len(chroms) < 2:
-            pytest.skip("Need at least 2 chromosomes for this test")
-
-        c1, c2 = chroms[:2]
-        df = query_gxf_parquet(parquet_from_ensembl, regions=[c1, c2], as_pyranges=False)
-        assert set(df["Chromosome"].unique()) <= {c1, c2}
+    def test_multiple_regions_or_combined(self, multi_chrom_parquet):
+        df = query_gxf_parquet(multi_chrom_parquet, regions=["chr1", "chr2"], as_pyranges=False)
+        assert set(df["Chromosome"].unique()) == {"chr1", "chr2"}
 
     def test_no_results_returns_empty_dataframe(self, parquet_from_ensembl):
         df = query_gxf_parquet(
@@ -142,40 +157,30 @@ class TestQueryGxfParquetOutput:
 class TestQueryGxfParquetPerRegionStrand:
     """Tests for per-region strand pairing."""
 
-    def test_single_strand_broadcasts(self, parquet_from_ensembl):
-        all_df = query_gxf_parquet(parquet_from_ensembl, as_pyranges=False)
-        chroms = all_df["Chromosome"].unique()
-        if len(chroms) < 2:
-            pytest.skip("Need at least 2 chromosomes")
-
-        c1, c2 = chroms[:2]
+    def test_single_strand_broadcasts(self, multi_chrom_parquet):
         df = query_gxf_parquet(
-            parquet_from_ensembl,
-            regions=[c1, c2],
+            multi_chrom_parquet,
+            regions=["chr1", "chr2"],
             strand="+",
             as_pyranges=False,
         )
+        assert len(df) > 0
         assert (df["Strand"] == "+").all()
 
-    def test_per_region_strand_list(self, parquet_from_ensembl):
-        all_df = query_gxf_parquet(parquet_from_ensembl, as_pyranges=False)
-        chroms = all_df["Chromosome"].unique()
-        if len(chroms) < 2:
-            pytest.skip("Need at least 2 chromosomes")
-
-        c1, c2 = chroms[:2]
+    def test_per_region_strand_list(self, multi_chrom_parquet):
+        # chr1 → only plus-strand rows; chr2 → only minus-strand rows
         df = query_gxf_parquet(
-            parquet_from_ensembl,
-            regions=[c1, c2],
+            multi_chrom_parquet,
+            regions=["chr1", "chr2"],
             strand=["+", "-"],
             as_pyranges=False,
         )
-        c1_rows = df[df["Chromosome"] == c1]
-        c2_rows = df[df["Chromosome"] == c2]
-        if len(c1_rows):
-            assert (c1_rows["Strand"] == "+").all()
-        if len(c2_rows):
-            assert (c2_rows["Strand"] == "-").all()
+        c1_rows = df[df["Chromosome"] == "chr1"]
+        c2_rows = df[df["Chromosome"] == "chr2"]
+        assert len(c1_rows) > 0
+        assert len(c2_rows) > 0
+        assert (c1_rows["Strand"] == "+").all()
+        assert (c2_rows["Strand"] == "-").all()
 
     def test_strand_region_count_mismatch_raises(self, parquet_from_ensembl):
         with pytest.raises(ValueError, match="must match"):
