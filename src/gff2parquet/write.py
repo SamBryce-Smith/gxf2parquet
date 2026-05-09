@@ -3,10 +3,42 @@
 from __future__ import annotations
 
 import sys
+import warnings
 from pathlib import Path
 
 import pandas as pd
 import pyranges1 as pr
+
+# Columns required for a valid GTF/GFF3 file (the 8 fixed fields)
+GTF_REQUIRED_COLUMNS: frozenset[str] = frozenset(
+    {"Chromosome", "Source", "Feature", "Start", "End", "Score", "Strand", "Frame"}
+)
+
+
+def _check_columns_for_text_output(df: pd.DataFrame, fmt: str) -> None:
+    """Raise ValueError if any core GTF/GFF3 columns are absent from *df*."""
+    missing = GTF_REQUIRED_COLUMNS - set(df.columns)
+    if missing:
+        raise ValueError(
+            f"Cannot write {fmt.upper()} output: the following required columns are "
+            f"missing from the data: {sorted(missing)}. "
+            "Ensure all core GTF columns (Chromosome, Source, Feature, Start, End, "
+            "Score, Strand, Frame) are included in --columns, or write to a Parquet "
+            "file instead."
+        )
+
+
+def _warn_columns_for_parquet_output(df: pd.DataFrame) -> None:
+    """Emit a warning if any core GTF/GFF3 columns are absent from *df*."""
+    missing = GTF_REQUIRED_COLUMNS - set(df.columns)
+    if missing:
+        warnings.warn(
+            f"Writing Parquet output without the following core GTF columns: "
+            f"{sorted(missing)}. The resulting file will not be convertible back to a "
+            "valid GTF/GFF3.",
+            UserWarning,
+            stacklevel=3,
+        )
 
 
 def _df_to_pyranges(df: pd.DataFrame) -> pr.PyRanges:
@@ -22,7 +54,11 @@ def write_gtf(df: pd.DataFrame, output: Path | None = None) -> None:
     Args:
         df: DataFrame with 1-based Start/End coordinates (as stored in Parquet).
         output: Output file path, or ``None`` to write to stdout.
+
+    Raises:
+        ValueError: If any of the 8 required GTF columns are missing from *df*.
     """
+    _check_columns_for_text_output(df, "gtf")
     gr = _df_to_pyranges(df)
     gr.to_gtf(sys.stdout if output is None else str(output))
 
@@ -36,7 +72,11 @@ def write_gff3(df: pd.DataFrame, output: Path | None = None) -> None:
     Args:
         df: DataFrame with 1-based Start/End coordinates (as stored in Parquet).
         output: Output file path, or ``None`` to write to stdout.
+
+    Raises:
+        ValueError: If any of the 8 required GFF3 columns are missing from *df*.
     """
+    _check_columns_for_text_output(df, "gff3")
     gr = _df_to_pyranges(df)
     content = _GFF3_HEADER + gr.to_gff3()
     if output is None:
@@ -62,6 +102,7 @@ def write_parquet(
     import pyarrow as pa
     import pyarrow.parquet as pq
 
+    _warn_columns_for_parquet_output(df)
     table = pa.Table.from_pandas(df, preserve_index=False)
     pq.write_table(
         table,

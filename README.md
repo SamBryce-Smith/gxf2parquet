@@ -78,11 +78,18 @@ gff2parquet build Homo_sapiens.GRCh38.113.gff3.gz ensembl.parquet \
 # Query: all genes on chr1, written as GTF to stdout
 gff2parquet query gencode.parquet --region chr1 --filter Feature eq gene
 
-# Query: region with strand filter, select columns, write to GTF file
+# Query: region with strand filter, select subset of attribute columns, write to GTF file
+# (all 8 core GTF columns must be included; extra attribute columns are optional)
+gff2parquet query gencode.parquet \
+    --region chr1:11869-14409 --strand plus \
+    --columns Chromosome Source Feature Start End Score Strand Frame gene_name transcript_id \
+    --output chr1_region.gtf
+
+# Query: region selecting non-standard columns — write to Parquet (not GTF/GFF3)
 gff2parquet query gencode.parquet \
     --region chr1:11869-14409 --strand plus \
     --columns Chromosome Start End Strand Feature gene_name \
-    --output chr1_region.gtf
+    --output chr1_region.parquet
 
 # Query: filter by feature set and gene type, save as Parquet for downstream use
 gff2parquet query gencode.parquet \
