@@ -1,7 +1,7 @@
 """GTF to Parquet conversion for genomics workflows."""
 
 from .convert import gff_to_parquet, gtf_to_parquet
-from .read import read_gtf_parquet
+from .read import read_gxf_parquet
 from .schema import (
     BASE_PRESET,
     ENSEMBL_PRESET,
@@ -13,7 +13,7 @@ from .schema import (
 __all__ = [
     "gtf_to_parquet",
     "gff_to_parquet",
-    "read_gtf_parquet",
+    "read_gxf_parquet",
     "SchemaPreset",
     "BASE_PRESET",
     "GENCODE_PRESET",
