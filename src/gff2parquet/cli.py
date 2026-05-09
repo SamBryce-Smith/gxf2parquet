@@ -5,8 +5,9 @@ import sys
 from pathlib import Path
 
 from .convert import detect_format, gff_to_parquet, gtf_to_parquet
-from .filters import parse_filter
-from .query import query_gff_parquet
+from .filters import parse_filter, parse_strand
+from .query import query_gxf_parquet
+from .read import read_source_format
 from .schema import get_preset
 from .write import detect_output_format, write_gff3, write_gtf, write_parquet
 
@@ -55,33 +56,74 @@ def _cmd_query(args: argparse.Namespace) -> int:
         print(f"Error: Input file not found: {args.input}", file=sys.stderr)
         return 1
 
-    # Parse --filter options (each is [COL, OP, VAL])
+    # Flatten --region lists (action="append" + nargs="+" gives [[r1], [r2, r3], ...])
+    regions: list[str] | None = None
+    if args.region:
+        regions = [r for group in args.region for r in group]
+
+    # Flatten --strand lists and map plus/minus -> +/-
+    strands: list[str] = []
+    if args.strand:
+        raw_strands = [s for group in args.strand for s in group]
+        try:
+            strands = [parse_strand(s) for s in raw_strands]
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 1
+
+    # Validate strand count: 0 (none), 1 (broadcast), or len(regions) (per-region)
+    n_regions = len(regions) if regions else 0
+    n_strands = len(strands)
+    if n_strands > 1 and n_strands != n_regions:
+        print(
+            f"Error: {n_strands} strand value(s) given but {n_regions} region(s) "
+            f"specified. Provide 0, 1, or exactly {n_regions} strand value(s).",
+            file=sys.stderr,
+        )
+        return 1
+
+    strand_arg: str | list[str] | None
+    if n_strands == 0:
+        strand_arg = None
+    elif n_strands == 1:
+        strand_arg = strands[0]
+    else:
+        strand_arg = strands
+
+    # Parse --filter options (each is a token list [COL, OP, VAL, ...])
     extra_filters = None
     if args.filter:
         try:
-            extra_filters = [parse_filter(col, op, val) for col, op, val in args.filter]
+            extra_filters = [parse_filter(tokens) for tokens in args.filter]
         except ValueError as e:
             print(f"Error: {e}", file=sys.stderr)
             return 1
 
     try:
-        df = query_gff_parquet(
+        df = query_gxf_parquet(
             args.input,
-            regions=args.region or None,
-            strand=args.strand,
+            regions=regions,
+            strand=strand_arg,
             filters=extra_filters,
             columns=args.columns or None,
+            as_pyranges=False,
         )
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
 
-    # Determine output format
+    # Determine output format: explicit --format > extension > Parquet metadata > "gtf"
     output = args.output
     if args.format:
         fmt = args.format
+    elif output is not None and detect_output_format(output) != "gtf":
+        fmt = detect_output_format(output)
     else:
-        fmt = detect_output_format(output, default="gtf")
+        fmt = read_source_format(args.input) or "gtf"
+        if output is not None:
+            detected = detect_output_format(output)
+            if detected == "parquet":
+                fmt = "parquet"
 
     try:
         if fmt == "gtf":
@@ -175,7 +217,7 @@ examples:
         "query",
         help="Query a Parquet annotation file.",
         description=(
-            "Query a GFF/GTF Parquet file by region, strand, or column filters "
+            "Query a GXF (GTF/GFF) Parquet file by region, strand, or column filters "
             "and write the results to a file or stdout."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -190,9 +232,14 @@ examples:
       --columns Chromosome Start End Strand Feature gene_name \\
       --output chr1_region.gtf
 
-  # Filter by feature set and gene type, save as Parquet for downstream use
+  # Per-region strand: chr1 plus-strand, chr2 minus-strand
   gff2parquet query gencode.parquet \\
-      --filter Feature isin exon,CDS \\
+      --region chr1 --region chr2 \\
+      --strand plus --strand minus
+
+  # Filter by feature set and gene type (space-separated values for isin)
+  gff2parquet query gencode.parquet \\
+      --filter Feature isin exon CDS \\
       --filter gene_type eq protein_coding \\
       --output coding_exons.parquet
 
@@ -207,6 +254,7 @@ examples:
     )
     query_parser.add_argument(
         "--region",
+        nargs="+",
         action="append",
         metavar="REGION",
         help=(
@@ -216,19 +264,25 @@ examples:
     )
     query_parser.add_argument(
         "--strand",
-        choices=["plus", "minus", "+", "-"],
+        nargs="+",
+        action="append",
         metavar="STRAND",
-        help="Strand filter: 'plus' (+) or 'minus' (-)",
+        help=(
+            "Strand filter: 'plus' (+) or 'minus' (-). "
+            "A single value is broadcast to all regions. "
+            "Multiple values must match the number of --region flags "
+            "and are paired positionally."
+        ),
     )
     query_parser.add_argument(
         "--filter",
-        nargs=3,
+        nargs="+",
         action="append",
-        metavar=("COL", "OP", "VAL"),
+        metavar="TOKEN",
         help=(
-            "Column filter, e.g. --filter gene_type eq protein_coding. "
+            "Column filter as 'COL OP VAL [VAL ...]', e.g. --filter Feature eq exon "
+            "or --filter gene_type isin protein_coding lncRNA. "
             "Operators: eq, ne, gt, lt, ge, le, isin, notin. "
-            "For isin/notin, VAL is comma-separated. "
             "May be repeated; all filters are AND-combined."
         ),
     )
@@ -250,7 +304,8 @@ examples:
         metavar="FORMAT",
         help=(
             "Output format: gtf, gff3, or parquet. "
-            "Auto-detected from --output extension when omitted (default: gtf)."
+            "Auto-detected from --output extension when omitted; "
+            "defaults to the source format stored in Parquet metadata (fallback: gtf)."
         ),
     )
     query_parser.add_argument(

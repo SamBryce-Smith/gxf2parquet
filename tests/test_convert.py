@@ -12,7 +12,7 @@ from gff2parquet import (
     GENCODE_PRESET,
     gff_to_parquet,
     gtf_to_parquet,
-    read_gtf_parquet,
+    read_gxf_parquet,
 )
 
 
@@ -68,7 +68,7 @@ class TestRoundtrip:
         )
 
         # Read back as DataFrame
-        df = read_gtf_parquet(temp_parquet_path, as_pyranges=False)
+        df = read_gxf_parquet(temp_parquet_path, as_pyranges=False)
 
         # Verify basic structure
         assert isinstance(df, pd.DataFrame)
@@ -97,7 +97,7 @@ class TestRoundtrip:
         )
 
         # Read back as PyRanges (default behavior)
-        gr = read_gtf_parquet(temp_parquet_path)
+        gr = read_gxf_parquet(temp_parquet_path)
 
         # Verify it's a PyRanges object
         assert isinstance(gr, pr.PyRanges)
@@ -124,7 +124,7 @@ class TestRoundtrip:
 
         # Convert to Parquet and read back as DataFrame
         gtf_to_parquet(gtf_path, temp_parquet_path, preset=preset)
-        roundtrip_df = read_gtf_parquet(temp_parquet_path, as_pyranges=False)
+        roundtrip_df = read_gxf_parquet(temp_parquet_path, as_pyranges=False)
 
         # Same number of rows
         assert len(roundtrip_df) == len(original_df)
@@ -147,7 +147,7 @@ class TestRoundtrip:
 
         # Convert to Parquet and read back as PyRanges
         gtf_to_parquet(gtf_path, temp_parquet_path, preset=preset)
-        roundtrip_gr = read_gtf_parquet(temp_parquet_path, as_pyranges=True)
+        roundtrip_gr = read_gxf_parquet(temp_parquet_path, as_pyranges=True)
 
         # Same number of rows
         assert len(roundtrip_gr) == len(original_gr)
@@ -191,12 +191,12 @@ class TestFilteredRead:
         )
 
         # Read full data to find available chromosomes
-        full_df = read_gtf_parquet(temp_parquet_path, as_pyranges=False)
+        full_df = read_gxf_parquet(temp_parquet_path, as_pyranges=False)
         chromosomes = full_df["Chromosome"].unique()
 
         if len(chromosomes) > 0:
             target_chrom = chromosomes[0]
-            filtered_df = read_gtf_parquet(
+            filtered_df = read_gxf_parquet(
                 temp_parquet_path,
                 filters=[("Chromosome", "==", target_chrom)],
                 as_pyranges=False,
@@ -220,12 +220,12 @@ class TestFilteredRead:
         )
 
         # Read full data to find available chromosomes
-        full_gr = read_gtf_parquet(temp_parquet_path)
+        full_gr = read_gxf_parquet(temp_parquet_path)
         chromosomes = full_gr.Chromosome.unique()
 
         if len(chromosomes) > 0:
             target_chrom = chromosomes[0]
-            filtered_gr = read_gtf_parquet(
+            filtered_gr = read_gxf_parquet(
                 temp_parquet_path,
                 filters=[("Chromosome", "==", target_chrom)],
             )
@@ -249,7 +249,7 @@ class TestFilteredRead:
         )
 
         # Read only gene features
-        filtered_df = read_gtf_parquet(
+        filtered_df = read_gxf_parquet(
             temp_parquet_path,
             filters=[("Feature", "==", "gene")],
             as_pyranges=False,
@@ -272,7 +272,7 @@ class TestFilteredRead:
         )
 
         # Read only gene features
-        filtered_gr = read_gtf_parquet(
+        filtered_gr = read_gxf_parquet(
             temp_parquet_path,
             filters=[("Feature", "==", "gene")],
         )
@@ -297,7 +297,7 @@ class TestColumnSelection:
         )
 
         selected_cols = ["Chromosome", "Start", "End", "gene_id"]
-        df = read_gtf_parquet(
+        df = read_gxf_parquet(
             temp_parquet_path, columns=selected_cols, as_pyranges=False
         )
 
@@ -317,7 +317,7 @@ class TestColumnSelection:
         )
 
         selected_cols = ["Chromosome", "Start", "End", "gene_id"]
-        gr = read_gtf_parquet(temp_parquet_path, columns=selected_cols)
+        gr = read_gxf_parquet(temp_parquet_path, columns=selected_cols)
 
         assert isinstance(gr, pr.PyRanges)
         assert set(gr.columns) == set(selected_cols)
@@ -335,7 +335,7 @@ class TestColumnSelection:
             preset=preset,
         )
 
-        df = read_gtf_parquet(
+        df = read_gxf_parquet(
             temp_parquet_path,
             columns=["Chromosome", "Start", "End"],
             filters=[("Feature", "==", "gene")],
@@ -358,7 +358,7 @@ class TestColumnSelection:
             preset=preset,
         )
 
-        gr = read_gtf_parquet(
+        gr = read_gxf_parquet(
             temp_parquet_path,
             columns=["Chromosome", "Start", "End"],
             filters=[("Feature", "==", "gene")],
@@ -391,7 +391,7 @@ class TestPartitioning:
             assert parquet_dir.is_dir()
 
             # Read back partitioned data
-            df = read_gtf_parquet(parquet_dir, as_pyranges=False)
+            df = read_gxf_parquet(parquet_dir, as_pyranges=False)
             assert len(df) > 0
 
     @pytest.mark.parametrize("gtf_fixture,preset", GTF_FIXTURES)
@@ -413,7 +413,7 @@ class TestPartitioning:
             assert parquet_dir.is_dir()
 
             # Read back partitioned data as PyRanges
-            gr = read_gtf_parquet(parquet_dir)
+            gr = read_gxf_parquet(parquet_dir)
             assert isinstance(gr, pr.PyRanges)
             assert len(gr) > 0
 
@@ -432,7 +432,7 @@ class TestPresets:
             preset=preset,
         )
 
-        df = read_gtf_parquet(temp_parquet_path, as_pyranges=False)
+        df = read_gxf_parquet(temp_parquet_path, as_pyranges=False)
 
         # All categorical columns declared in the preset should round-trip as category
         for col in preset.categorical_columns:
@@ -457,7 +457,7 @@ class TestPresets:
             preset=preset,
         )
 
-        gr = read_gtf_parquet(temp_parquet_path)
+        gr = read_gxf_parquet(temp_parquet_path)
 
         assert isinstance(gr, pr.PyRanges)
         # All categorical columns declared in the preset should round-trip as category
@@ -485,7 +485,7 @@ class TestCompression:
                 compression=compression,
             )
 
-            df = read_gtf_parquet(parquet_path, as_pyranges=False)
+            df = read_gxf_parquet(parquet_path, as_pyranges=False)
             assert len(df) > 0
 
     @pytest.mark.parametrize("gtf_fixture,preset", GTF_FIXTURES)
@@ -506,7 +506,7 @@ class TestCompression:
                 compression=compression,
             )
 
-            gr = read_gtf_parquet(parquet_path)
+            gr = read_gxf_parquet(parquet_path)
             assert isinstance(gr, pr.PyRanges)
             assert len(gr) > 0
 
@@ -525,7 +525,7 @@ class TestGFFRoundtrip:
         )
 
         # Read back as DataFrame
-        df = read_gtf_parquet(temp_parquet_path, as_pyranges=False)
+        df = read_gxf_parquet(temp_parquet_path, as_pyranges=False)
 
         # Verify basic structure
         assert isinstance(df, pd.DataFrame)
@@ -549,7 +549,7 @@ class TestGFFRoundtrip:
         )
 
         # Read back as PyRanges (default behavior)
-        gr = read_gtf_parquet(temp_parquet_path)
+        gr = read_gxf_parquet(temp_parquet_path)
 
         # Verify it's a PyRanges object
         assert isinstance(gr, pr.PyRanges)
@@ -571,7 +571,7 @@ class TestGFFRoundtrip:
 
         # Convert to Parquet and read back as DataFrame
         gff_to_parquet(gencode_gff_path, temp_parquet_path, preset=GENCODE_PRESET)
-        roundtrip_df = read_gtf_parquet(temp_parquet_path, as_pyranges=False)
+        roundtrip_df = read_gxf_parquet(temp_parquet_path, as_pyranges=False)
 
         # Same number of rows
         assert len(roundtrip_df) == len(original_df)
@@ -591,7 +591,7 @@ class TestGFFRoundtrip:
 
         # Convert to Parquet and read back as PyRanges
         gff_to_parquet(gencode_gff_path, temp_parquet_path, preset=GENCODE_PRESET)
-        roundtrip_gr = read_gtf_parquet(temp_parquet_path, as_pyranges=True)
+        roundtrip_gr = read_gxf_parquet(temp_parquet_path, as_pyranges=True)
 
         # Same number of rows
         assert len(roundtrip_gr) == len(original_gr)
@@ -630,12 +630,12 @@ class TestGFFFilteredRead:
         )
 
         # Read full data to find available chromosomes
-        full_df = read_gtf_parquet(temp_parquet_path, as_pyranges=False)
+        full_df = read_gxf_parquet(temp_parquet_path, as_pyranges=False)
         chromosomes = full_df["Chromosome"].unique()
 
         if len(chromosomes) > 0:
             target_chrom = chromosomes[0]
-            filtered_df = read_gtf_parquet(
+            filtered_df = read_gxf_parquet(
                 temp_parquet_path,
                 filters=[("Chromosome", "==", target_chrom)],
                 as_pyranges=False,
@@ -654,7 +654,7 @@ class TestGFFFilteredRead:
         )
 
         # Read only gene features
-        filtered_gr = read_gtf_parquet(
+        filtered_gr = read_gxf_parquet(
             temp_parquet_path,
             filters=[("Feature", "==", "gene")],
         )
@@ -676,7 +676,7 @@ class TestGFFColumnSelection:
         )
 
         selected_cols = ["Chromosome", "Start", "End", "gene_id"]
-        df = read_gtf_parquet(
+        df = read_gxf_parquet(
             temp_parquet_path, columns=selected_cols, as_pyranges=False
         )
 
@@ -692,7 +692,7 @@ class TestGFFColumnSelection:
             preset=GENCODE_PRESET,
         )
 
-        gr = read_gtf_parquet(
+        gr = read_gxf_parquet(
             temp_parquet_path,
             columns=["Chromosome", "Start", "End"],
             filters=[("Feature", "==", "gene")],
@@ -722,7 +722,7 @@ class TestGFFPartitioning:
             assert parquet_dir.is_dir()
 
             # Read back partitioned data as PyRanges
-            gr = read_gtf_parquet(parquet_dir)
+            gr = read_gxf_parquet(parquet_dir)
             assert isinstance(gr, pr.PyRanges)
             assert len(gr) > 0
 
@@ -743,6 +743,6 @@ class TestGFFCompression:
                 compression=compression,
             )
 
-            gr = read_gtf_parquet(parquet_path)
+            gr = read_gxf_parquet(parquet_path)
             assert isinstance(gr, pr.PyRanges)
             assert len(gr) > 0

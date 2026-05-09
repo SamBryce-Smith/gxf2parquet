@@ -15,7 +15,7 @@ from typing import Generator
 import pandas as pd
 import pyranges1 as pr
 
-from gff2parquet import gtf_to_parquet, read_gtf_parquet, GENCODE_PRESET
+from gff2parquet import gtf_to_parquet, read_gxf_parquet, GENCODE_PRESET
 
 
 @contextmanager
@@ -108,7 +108,7 @@ def benchmark_read_parquet(
 
         with track_memory() as mem_stats:
             start = time.perf_counter()
-            df = read_gtf_parquet(parquet_path)
+            df = read_gxf_parquet(parquet_path)
             elapsed = time.perf_counter() - start
 
         times.append(elapsed)
@@ -139,7 +139,7 @@ def benchmark_filtered_read(
 
         with track_memory() as mem_stats:
             start = time.perf_counter()
-            df = read_gtf_parquet(
+            df = read_gxf_parquet(
                 parquet_path,
                 columns=["Chromosome", "Start", "End", "Strand", "gene_id", "gene_name"],
                 filters=[("Chromosome", "==", chromosome), ("Feature", "==", feature)],
@@ -222,7 +222,7 @@ def benchmark_region_query(
             if strand is not None:
                 filters.append(("Strand", "==", strand))
 
-            df = read_gtf_parquet(
+            df = read_gxf_parquet(
                 parquet_path,
                 columns=["Chromosome", "Start", "End", "Strand", "Feature", "gene_id", "gene_name"],
                 filters=filters,

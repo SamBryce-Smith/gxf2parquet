@@ -6,15 +6,37 @@ import pandas as pd
 import pyarrow.parquet as pq
 import pyranges1 as pr
 
+from .convert import METADATA_SOURCE_FORMAT
 
-def read_gtf_parquet(
+
+def read_source_format(parquet_path: str | Path) -> str | None:
+    """Read the source format from Parquet file-level metadata.
+
+    Returns the value of the ``gff2parquet.source_format`` key (e.g. ``"gtf"``
+    or ``"gff3"``), or ``None`` if the key is absent (e.g. files built before
+    this metadata was added).
+
+    Args:
+        parquet_path: Path to a Parquet file or partitioned dataset directory.
+
+    Returns:
+        Source format string, or ``None`` if metadata key is not present.
+    """
+    meta = pq.read_metadata(str(parquet_path))
+    raw = meta.metadata.get(METADATA_SOURCE_FORMAT)
+    if raw is None:
+        return None
+    return raw.decode() if isinstance(raw, bytes) else raw
+
+
+def read_gxf_parquet(
     parquet_path: str | Path,
     *,
     columns: list[str] | None = None,
     filters: list[tuple] | list[list[tuple]] | None = None,
     as_pyranges: bool = True,
 ) -> pr.PyRanges | pd.DataFrame:
-    """Read a GTF Parquet file into a PyRanges object or pandas DataFrame.
+    """Read a GXF (GTF/GFF) Parquet file into a PyRanges object or pandas DataFrame.
 
     Args:
         parquet_path: Path to Parquet file or partitioned dataset directory.
@@ -30,16 +52,16 @@ def read_gtf_parquet(
 
     Examples:
         # Read as PyRanges (default)
-        gr = read_gtf_parquet("annotations.parquet")
+        gr = read_gxf_parquet("annotations.parquet")
 
         # Read as DataFrame with 1-based coordinates
-        df = read_gtf_parquet("annotations.parquet", as_pyranges=False)
+        df = read_gxf_parquet("annotations.parquet", as_pyranges=False)
 
         # Read specific columns
-        gr = read_gtf_parquet("annotations.parquet", columns=["Chromosome", "Start", "End", "gene_name"])
+        gr = read_gxf_parquet("annotations.parquet", columns=["Chromosome", "Start", "End", "gene_name"])
 
         # Read with filters (predicate pushdown)
-        gr = read_gtf_parquet(
+        gr = read_gxf_parquet(
             "annotations.parquet",
             filters=[("Chromosome", "==", "chr1"), ("Feature", "==", "gene")]
         )
