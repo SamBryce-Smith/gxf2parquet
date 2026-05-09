@@ -12,7 +12,7 @@ wheels = [
 ]
 
 [[package]]
-name = "gff2parquet"
+name = "gxf2parquet"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
