@@ -33,6 +33,9 @@ def write_gtf(df: pd.DataFrame, output: Path | None = None) -> None:
         gr.to_gtf(str(output))
 
 
+_GFF3_HEADER = "##gff-version 3\n"
+
+
 def write_gff3(df: pd.DataFrame, output: Path | None = None) -> None:
     """Write a DataFrame with 1-based coordinates to GFF3 format.
 
@@ -45,9 +48,12 @@ def write_gff3(df: pd.DataFrame, output: Path | None = None) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir) / "out.gff3"
             gr.to_gff3(str(tmp_path))
-            print(tmp_path.read_text(), end="")
+            print(_GFF3_HEADER + tmp_path.read_text(), end="")
     else:
-        gr.to_gff3(str(output))
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir) / "out.gff3"
+            gr.to_gff3(str(tmp_path))
+            output.write_text(_GFF3_HEADER + tmp_path.read_text())
 
 
 def write_parquet(
@@ -73,6 +79,37 @@ def write_parquet(
         str(output),
         compression=compression if compression != "none" else None,
     )
+
+
+def write_output(
+    df: pd.DataFrame,
+    output: Path | None,
+    fmt: str,
+    *,
+    compression: str = "zstd",
+) -> None:
+    """Write *df* to *output* in the requested format.
+
+    Args:
+        df: DataFrame with 1-based Start/End coordinates (as stored in Parquet).
+        output: Output file path, or ``None`` to write to stdout (text formats only).
+        fmt: One of ``'gtf'``, ``'gff3'``, or ``'parquet'``.
+        compression: Compression codec for Parquet output (default: ``'zstd'``).
+
+    Raises:
+        ValueError: If *fmt* is not recognised, or if Parquet output is requested
+            without an output path.
+    """
+    if fmt == "gtf":
+        write_gtf(df, output)
+    elif fmt == "gff3":
+        write_gff3(df, output)
+    elif fmt == "parquet":
+        if output is None:
+            raise ValueError("An output path is required for Parquet format.")
+        write_parquet(df, output, compression=compression)
+    else:
+        raise ValueError(f"Unknown output format {fmt!r}. Expected 'gtf', 'gff3', or 'parquet'.")
 
 
 def detect_output_format(output: Path | None, *, default: str = "gtf") -> str:

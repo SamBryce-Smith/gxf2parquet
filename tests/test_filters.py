@@ -71,6 +71,8 @@ class TestParseStrand:
 
 
 class TestParseFilter:
+    """parse_filter() accepts a token list [col, op, val, ...]."""
+
     @pytest.mark.parametrize(
         "op,arrow_op",
         [
@@ -83,28 +85,52 @@ class TestParseFilter:
         ],
     )
     def test_scalar_operators(self, op, arrow_op):
-        col, result_op, val = parse_filter("gene_type", op, "protein_coding")
+        col, result_op, val = parse_filter(["gene_type", op, "protein_coding"])
         assert col == "gene_type"
         assert result_op == arrow_op
         assert val == "protein_coding"
 
-    def test_isin_splits_on_comma(self):
-        col, op, val = parse_filter("Chromosome", "isin", "chr1,chr2,chr3")
+    def test_isin_collects_multiple_tokens(self):
+        col, op, val = parse_filter(["Chromosome", "isin", "chr1", "chr2", "chr3"])
         assert op == "in"
         assert val == ["chr1", "chr2", "chr3"]
 
-    def test_notin_splits_on_comma(self):
-        col, op, val = parse_filter("Feature", "notin", "CDS,UTR")
+    def test_notin_collects_multiple_tokens(self):
+        col, op, val = parse_filter(["Feature", "notin", "CDS", "UTR"])
         assert op == "not in"
         assert val == ["CDS", "UTR"]
 
-    def test_isin_strips_whitespace(self):
-        _, _, val = parse_filter("Chromosome", "isin", "chr1, chr2 , chr3")
-        assert val == ["chr1", "chr2", "chr3"]
+    def test_isin_single_value(self):
+        col, op, val = parse_filter(["Feature", "isin", "gene"])
+        assert op == "in"
+        assert val == ["gene"]
+
+    def test_numeric_coercion_int(self):
+        col, op, val = parse_filter(["Start", "gt", "100000"])
+        assert val == 100000
+        assert isinstance(val, int)
+
+    def test_numeric_coercion_float(self):
+        col, op, val = parse_filter(["Score", "ge", "0.5"])
+        assert val == 0.5
+        assert isinstance(val, float)
+
+    def test_string_value_preserved(self):
+        _, _, val = parse_filter(["Feature", "eq", "exon"])
+        assert val == "exon"
+        assert isinstance(val, str)
 
     def test_unknown_op_raises(self):
         with pytest.raises(ValueError, match="Unknown operator"):
-            parse_filter("gene_type", "like", "protein%")
+            parse_filter(["gene_type", "like", "protein%"])
+
+    def test_too_few_tokens_raises(self):
+        with pytest.raises(ValueError, match="at least 3 tokens"):
+            parse_filter(["Feature", "eq"])
+
+    def test_isin_no_values_raises(self):
+        with pytest.raises(ValueError, match="at least 3 tokens"):
+            parse_filter(["Feature", "isin"])
 
 
 class TestBuildFilters:
@@ -145,7 +171,38 @@ class TestBuildFilters:
         assert ("Strand", "==", "-") in result
         assert ("Feature", "==", "exon") in result
 
-    def test_multi_region_with_strand(self):
+    def test_multi_region_broadcast_strand(self):
         result = build_filters(regions=["chr1", "chr2"], strand="plus")
         # Each group should contain the strand filter
         assert all(("Strand", "==", "+") in group for group in result)
+
+    def test_per_region_strand_pairing(self):
+        result = build_filters(regions=["chr1", "chr2"], strand=["+", "-"])
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert ("Strand", "==", "+") in result[0]
+        assert ("Chromosome", "==", "chr1") in result[0]
+        assert ("Strand", "==", "-") in result[1]
+        assert ("Chromosome", "==", "chr2") in result[1]
+
+    def test_per_region_strand_with_aliases(self):
+        result = build_filters(regions=["chr1", "chr2"], strand=["plus", "minus"])
+        assert ("Strand", "==", "+") in result[0]
+        assert ("Strand", "==", "-") in result[1]
+
+    def test_strand_list_length_mismatch_raises(self):
+        with pytest.raises(ValueError, match="must match"):
+            build_filters(regions=["chr1", "chr2"], strand=["+", "-", "+"])
+
+    def test_strand_list_one_region_mismatch_raises(self):
+        with pytest.raises(ValueError, match="must match"):
+            build_filters(regions=["chr1"], strand=["+", "-"])
+
+    def test_per_region_strand_with_extra_filters(self):
+        result = build_filters(
+            regions=["chr1", "chr2"],
+            strand=["+", "-"],
+            extra_filters=[("Feature", "==", "gene")],
+        )
+        for group in result:
+            assert ("Feature", "==", "gene") in group
