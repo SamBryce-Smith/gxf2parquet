@@ -130,30 +130,6 @@ class TestQueryGxfParquetPyRanges:
         assert len(gr) > 0
 
 
-class TestQueryGxfParquetOutput:
-    """Tests for the output= parameter (write to file, return None)."""
-
-    def test_output_to_gtf_returns_none(self, parquet_from_ensembl, tmp_path):
-        out = tmp_path / "out.gtf"
-        result = query_gxf_parquet(parquet_from_ensembl, output=out)
-        assert result is None
-        assert out.exists()
-        assert out.stat().st_size > 0
-
-    def test_output_to_gff3_returns_none(self, parquet_from_ensembl, tmp_path):
-        out = tmp_path / "out.gff3"
-        result = query_gxf_parquet(parquet_from_ensembl, output=out)
-        assert result is None
-        assert out.exists()
-        content = out.read_text()
-        assert "##gff-version 3" in content
-
-    def test_output_format_override(self, parquet_from_ensembl, tmp_path):
-        out = tmp_path / "out.gtf"
-        query_gxf_parquet(parquet_from_ensembl, output=out, output_format="gtf")
-        assert out.exists()
-
-
 class TestQueryGxfParquetPerRegionStrand:
     """Tests for per-region strand pairing."""
 

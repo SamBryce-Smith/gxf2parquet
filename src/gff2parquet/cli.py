@@ -2,6 +2,7 @@
 
 import argparse
 import sys
+import warnings
 from pathlib import Path
 
 from .convert import detect_format, gff_to_parquet, gtf_to_parquet
@@ -9,7 +10,7 @@ from .filters import parse_filter, parse_strand
 from .query import query_gxf_parquet
 from .read import read_source_format
 from .schema import get_preset
-from .write import detect_output_format, write_gff3, write_gtf, write_parquet
+from .write import detect_output_format
 
 
 def _cmd_build(args: argparse.Namespace) -> int:
@@ -100,13 +101,13 @@ def _cmd_query(args: argparse.Namespace) -> int:
             return 1
 
     try:
-        df = query_gxf_parquet(
+        gr = query_gxf_parquet(
             args.input,
             regions=regions,
             strand=strand_arg,
             filters=extra_filters,
             columns=args.columns or None,
-            as_pyranges=False,
+            as_pyranges=True,
         )
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
@@ -127,16 +128,46 @@ def _cmd_query(args: argparse.Namespace) -> int:
 
     try:
         if fmt == "gtf":
-            write_gtf(df, output)
+            content = gr.to_gtf()
+            if output is None:
+                sys.stdout.write(content)
+            else:
+                output.write_text(content)
         elif fmt == "gff3":
-            write_gff3(df, output)
+            content = "##gff-version 3\n" + gr.to_gff3()
+            if output is None:
+                sys.stdout.write(content)
+            else:
+                output.write_text(content)
         elif fmt == "parquet":
             if output is None:
                 print(
                     "Error: --output is required for parquet format.", file=sys.stderr
                 )
                 return 1
-            write_parquet(df, output, compression=args.compression)
+            import pandas as pd
+            import pyarrow as pa
+            import pyarrow.parquet as pq
+
+            df = pd.DataFrame(gr).copy()
+            df["Start"] = df["Start"] + 1  # 0-based PyRanges → 1-based for storage
+            missing_core = {
+                "Chromosome", "Source", "Feature", "Start", "End", "Score", "Strand", "Frame"
+            } - set(df.columns)
+            if missing_core:
+                warnings.warn(
+                    f"Writing Parquet output without the following core GTF columns: "
+                    f"{sorted(missing_core)}. The resulting file will not be convertible "
+                    "back to a valid GTF/GFF3.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            table = pa.Table.from_pandas(df, preserve_index=False)
+            pq.write_table(
+                table,
+                str(output),
+                compression=args.compression if args.compression != "none" else None,
+            )
         else:
             print(f"Error: Unknown output format {fmt!r}.", file=sys.stderr)
             return 1
