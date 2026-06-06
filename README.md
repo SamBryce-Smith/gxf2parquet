@@ -62,43 +62,43 @@ The configured hooks will automatically run before each commit to:
 
 ```bash
 # Build: convert GENCODE GTF to Parquet (default gencode preset)
-gff2parquet build gencode.v47.annotation.gtf.gz gencode.parquet
+gxf2parquet build gencode.v47.annotation.gtf.gz gencode.parquet
 
 # Build: partition by Chromosome and Feature for faster region/feature queries
-gff2parquet build gencode.v47.annotation.gtf.gz gencode.parquet \
+gxf2parquet build gencode.v47.annotation.gtf.gz gencode.parquet \
     --partition-cols Chromosome Feature
 
 # Build: Ensembl GTF with matching preset
-gff2parquet build Homo_sapiens.GRCh38.113.gtf.gz ensembl.parquet --preset ensembl
+gxf2parquet build Homo_sapiens.GRCh38.113.gtf.gz ensembl.parquet --preset ensembl
 
 # Build: GFF3 input (auto-detected from extension), snappy compression
-gff2parquet build Homo_sapiens.GRCh38.113.gff3.gz ensembl.parquet \
+gxf2parquet build Homo_sapiens.GRCh38.113.gff3.gz ensembl.parquet \
     --preset ensembl --compression snappy
 
 # Query: all genes on chr1, written as GTF to stdout
-gff2parquet query gencode.parquet --region chr1 --filter Feature eq gene
+gxf2parquet query gencode.parquet --region chr1 --filter Feature eq gene
 
 # Query: region with strand filter, select subset of attribute columns, write to GTF file
 # (all 8 core GTF columns must be included; extra attribute columns are optional)
-gff2parquet query gencode.parquet \
+gxf2parquet query gencode.parquet \
     --region chr1:11869-14409 --strand plus \
     --columns Chromosome Source Feature Start End Score Strand Frame gene_name transcript_id \
     --output chr1_region.gtf
 
 # Query: region selecting non-standard columns — write to Parquet (not GTF/GFF3)
-gff2parquet query gencode.parquet \
+gxf2parquet query gencode.parquet \
     --region chr1:11869-14409 --strand plus \
     --columns Chromosome Start End Strand Feature gene_name \
     --output chr1_region.parquet
 
 # Query: filter by feature set and gene type, save as Parquet for downstream use
-gff2parquet query gencode.parquet \
+gxf2parquet query gencode.parquet \
     --filter Feature isin exon,CDS \
     --filter gene_type eq protein_coding \
     --output coding_exons.parquet
 
 # Query: whole chromosome, GFF3 output
-gff2parquet query gencode.parquet --region chr2 --output chr2.gff3
+gxf2parquet query gencode.parquet --region chr2 --output chr2.gff3
 ```
 
 ### Python API
