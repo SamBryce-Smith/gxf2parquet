@@ -10,8 +10,6 @@ from .schema import (
     SchemaPreset,
     get_preset,
 )
-from .write import write_gff3, write_gtf
-
 __all__ = [
     "gtf_to_parquet",
     "gff_to_parquet",
@@ -19,8 +17,6 @@ __all__ = [
     "read_gxf_parquet",
     "read_source_format",
     "detect_format",
-    "write_gtf",
-    "write_gff3",
     "SchemaPreset",
     "BASE_PRESET",
     "GENCODE_PRESET",

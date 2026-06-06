@@ -10,8 +10,6 @@ import pyarrow.parquet as pq
 import pyranges1 as pr
 
 from .filters import build_filters
-from .read import read_source_format
-from .write import detect_output_format, write_output
 
 
 def query_gxf_parquet(
@@ -21,10 +19,8 @@ def query_gxf_parquet(
     strand: str | list[str] | None = None,
     filters: list[tuple[str, str, Any]] | None = None,
     columns: list[str] | None = None,
-    output: str | Path | None = None,
-    output_format: str | None = None,
     as_pyranges: bool = True,
-) -> pr.PyRanges | pd.DataFrame | None:
+) -> pr.PyRanges | pd.DataFrame:
     """Query a GXF (GTF/GFF) Parquet file with optional region, strand, and column filters.
 
     Args:
@@ -40,18 +36,11 @@ def query_gxf_parquet(
             (``'=='``, ``'!='``, ``'>'``, ``'<'``, ``'>='``, ``'<='``, ``'in'``,
             ``'not in'``). Multiple filters are AND-combined.
         columns: Restrict output to these columns. ``None`` reads all columns.
-        output: If given, write results to this path (format inferred from suffix
-            or ``output_format``) and return ``None``.
-        output_format: ``'gtf'``, ``'gff3'``, or ``'parquet'``. When ``None``,
-            inferred from the Parquet file's source-format metadata, falling back
-            to ``'gtf'``.
         as_pyranges: If ``True`` (default), return a PyRanges object with 0-based
             coordinates. If ``False``, return a DataFrame with 1-based coordinates.
-            Ignored when *output* is set.
 
     Returns:
-        PyRanges (0-based) or DataFrame (1-based) when *output* is ``None``.
-        ``None`` when *output* is set (results written to file instead).
+        PyRanges (0-based) or DataFrame (1-based).
     """
     parquet_path = Path(parquet_path)
 
@@ -62,14 +51,6 @@ def query_gxf_parquet(
         filters=combined,
     )
     df = table.to_pandas()
-
-    if output is not None:
-        output = Path(output)
-        fmt = output_format or detect_output_format(
-            output, default=read_source_format(parquet_path) or "gtf"
-        )
-        write_output(df, output, fmt)
-        return None
 
     if as_pyranges:
         out = df.copy()
