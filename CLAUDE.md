@@ -13,12 +13,12 @@ This is a GTF to Parquet conversion utility for genomics workflows. It converts 
 ## Quick Reference
 
 ```
-src/gff2parquet/
+src/gxf2parquet/
 ├── __init__.py       # Public API exports
 ├── convert.py:13     # gtf_to_parquet() function
-├── read.py:10        # read_gtf_parquet() function
+├── read.py:10        # read_gxf_parquet() function
 ├── schema.py:19-41   # GENCODE_PRESET, ENSEMBL_PRESET, get_preset()
-└── cli.py            # CLI entry point: gff2parquet
+└── cli.py            # CLI entry point: gxf2parquet
 
 tests/test_convert.py # 6 test classes, multiple test methods
 benchmarks/benchmark.py # Performance comparison script
@@ -26,7 +26,7 @@ benchmarks/benchmark.py # Performance comparison script
 
 ## API Reference
 
-### `gtf_to_parquet()` (src/gff2parquet/convert.py:13)
+### `gtf_to_parquet()` (src/gxf2parquet/convert.py:13)
 
 ```python
 def gtf_to_parquet(
@@ -41,10 +41,10 @@ def gtf_to_parquet(
 
 Converts a GTF file to Parquet format with optional partitioning.
 
-### `read_gtf_parquet()` (src/gff2parquet/read.py:10)
+### `read_gxf_parquet()` (src/gxf2parquet/read.py:10)
 
 ```python
-def read_gtf_parquet(
+def read_gxf_parquet(
     parquet_path: str | Path,
     *,
     columns: list[str] | None = None,
@@ -86,13 +86,13 @@ uv run prek run --all-files
 
 ## Schema Presets
 
-### GENCODE_PRESET (src/gff2parquet/schema.py:19)
+### GENCODE_PRESET (src/gxf2parquet/schema.py:19)
 
 **Categorical columns:** Chromosome, Source, Feature, Strand, gene_type, transcript_type
 **List columns:** tag, ont
 **Use for:** GENCODE annotation files
 
-### ENSEMBL_PRESET (src/gff2parquet/schema.py:31)
+### ENSEMBL_PRESET (src/gxf2parquet/schema.py:31)
 
 **Categorical columns:** Chromosome, Source, Feature, Strand, gene_biotype, transcript_biotype
 **List columns:** tag
@@ -101,7 +101,7 @@ uv run prek run --all-files
 ### Usage in code
 
 ```python
-from gff2parquet import GENCODE_PRESET, ENSEMBL_PRESET, get_preset
+from gxf2parquet import GENCODE_PRESET, ENSEMBL_PRESET, get_preset
 
 # Direct import
 gtf_to_parquet("file.gtf", "file.parquet", preset=GENCODE_PRESET)
@@ -120,12 +120,12 @@ The package stores GTF-native coordinates (1-based, closed intervals) in the Par
 # Row in file: Start=1001, End=2000
 
 # Reading as PyRanges (default, as_pyranges=True)
-gr = read_gtf_parquet("file.parquet")
+gr = read_gxf_parquet("file.parquet")
 gr.Start  # 1000 (converted to 0-based)
 gr.End    # 2000 (unchanged, half-open end)
 
 # Reading as DataFrame (as_pyranges=False)
-df = read_gtf_parquet("file.parquet", as_pyranges=False)
+df = read_gxf_parquet("file.parquet", as_pyranges=False)
 df["Start"]  # 1001 (1-based, as stored)
 df["End"]    # 2000 (1-based, as stored)
 ```
@@ -139,25 +139,25 @@ parquet_end = pyranges_end          # already correct (half-open end equals clos
 ## Common Query Patterns
 
 ```python
-from gff2parquet import read_gtf_parquet
+from gxf2parquet import read_gxf_parquet
 
 # Filter by chromosome and feature type (predicate pushdown)
-gr = read_gtf_parquet(
+gr = read_gxf_parquet(
     "annotations.parquet",
     filters=[("Chromosome", "==", "chr1"), ("Feature", "==", "gene")]
 )
 
 # Load only specific columns
-gr = read_gtf_parquet(
+gr = read_gxf_parquet(
     "annotations.parquet",
     columns=["Chromosome", "Start", "End", "gene_name", "gene_type"]
 )
 
 # Get raw DataFrame for non-interval analysis
-df = read_gtf_parquet("annotations.parquet", as_pyranges=False)
+df = read_gxf_parquet("annotations.parquet", as_pyranges=False)
 
 # Combine filters and column selection
-gr = read_gtf_parquet(
+gr = read_gxf_parquet(
     "annotations.parquet",
     columns=["Chromosome", "Start", "End", "gene_name"],
     filters=[("Chromosome", "in", ["chr1", "chr2"]), ("Feature", "==", "exon")]
@@ -196,4 +196,4 @@ pr.assistant.export_docs("pr_docs.txt")
 
 ## CLI Reference
 
-See README.md for comprehensive CLI usage examples. The CLI command is `gff2parquet`.
+See README.md for comprehensive CLI usage examples. The CLI command is `gxf2parquet`.

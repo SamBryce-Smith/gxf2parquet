@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "gff2parquet"
+name = "gxf2parquet"
 version = "0.1.0"
 description = "Convert GTF annotation files to Parquet format for efficient genomics workflows"
 requires-python = ">=3.12"
@@ -18,10 +18,10 @@ dependencies = [
 ]
 
 [project.scripts]
-gff2parquet = "gff2parquet.cli:main"
+gxf2parquet = "gxf2parquet.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/gff2parquet"]
+packages = ["src/gxf2parquet"]
 
 [tool.hatch.build.targets.sdist]
 include = [

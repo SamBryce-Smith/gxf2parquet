@@ -1,4 +1,4 @@
-# gff2parquet
+# gxf2parquet
 
 Parse and transform Gene Transfer Format (GTF) annotation files to Apache Parquet format for more efficient and powerful downstream analysis.
 
@@ -21,7 +21,7 @@ Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 ### General users
 
 ```bash
-uv pip install gff2parquet
+uv pip install gxf2parquet
 ```
 
 ### Developers
@@ -104,7 +104,7 @@ gff2parquet query gencode.parquet --region chr2 --output chr2.gff3
 ### Python API
 
 ```python
-from gff2parquet import gtf_to_parquet, read_gtf_parquet, GENCODE_PRESET
+from gxf2parquet import gtf_to_parquet, read_gxf_parquet, GENCODE_PRESET
 
 # Convert GTF to Parquet (partitioned for efficient filtered reads)
 gtf_to_parquet(
@@ -257,7 +257,7 @@ Two presets are available for common GTF sources:
 
 The package stores GTF-native coordinates (1-based, closed intervals) in the Parquet file.
 
-When reading with `read_gtf_parquet()`:
+When reading with `read_gxf_parquet()`:
 - **Default behavior** (`as_pyranges=True`): Returns a PyRanges object with 0-based, half-open coordinates (Start coordinate is automatically converted by subtracting 1)
 - **DataFrame mode** (`as_pyranges=False`): Returns a pandas DataFrame with 1-based coordinates as stored in the Parquet file
 
