@@ -12,6 +12,19 @@ wheels = [
 ]
 
 [[package]]
+name = "gtfreader"
+version = "0.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pandas" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b4/d0/94d7c3a8140d6d8df281b22ed91283c2f2797d390c0d3af2425d6c1b69b5/gtfreader-0.2.0.tar.gz", hash = "sha256:59c0dece31c8fcb2b398beb247fd6b6214d0a20bd6122987ed5fd67efb11b61d", size = 7422, upload-time = "2026-03-18T21:28:57.284Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/de/ba/08a7e384c2e33074e4bbd948e275e2a391eb9ced2aa65609e2708f81059e/gtfreader-0.2.0-cp312-cp312-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:77a112f972ed52ac7d37fe5dd13df2cb954a23905ad1f31a50a96a09bf50d839", size = 150016, upload-time = "2026-03-18T21:28:55.216Z" },
+    { url = "https://files.pythonhosted.org/packages/b3/56/239b5706022121ddee92b036fe51fd93d0f482c7efe386cf08b4ec894a66/gtfreader-0.2.0-cp313-cp313-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e98c7c4e5c2e2d44341261ab3bd8bb47846b4cf6b494c97fc57e0b6a886e9b5d", size = 215090, upload-time = "2026-03-18T21:28:56.176Z" },
+]
+
+[[package]]
 name = "gxf2parquet"
 version = "0.1.0"
 source = { editable = "." }
@@ -29,9 +42,9 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "pandas", specifier = "<3.0.0" },
+    { name = "pandas" },
     { name = "pyarrow", specifier = ">=14.0.0" },
-    { name = "pyranges1", specifier = ">=1.2.0" },
+    { name = "pyranges1", specifier = ">=1.3.5" },
 ]
 
 [package.metadata.requires-dev]
@@ -262,17 +275,18 @@ wheels = [
 
 [[package]]
 name = "pyranges1"
-version = "1.2.0"
+version = "1.3.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "gtfreader" },
     { name = "natsort" },
     { name = "pandas" },
     { name = "ruranges" },
     { name = "tabulate" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7b/bf/76f10c721cec325ed41c861304fef794b6859ebbf58f71e18f497753bf77/pyranges1-1.2.0.tar.gz", hash = "sha256:36228b1b1f28727331b53ed8923283f117040c080053499e3c16c078d5d2efdf", size = 910034, upload-time = "2026-01-29T14:04:23.637Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/04/ff/c3191d86a989227154ec4c99b8f787b04a3ca658db0b8733b6408f684c73/pyranges1-1.3.8.tar.gz", hash = "sha256:91a68f4bcad99804fe8700ec1a5d7aaeaab4d70a4264c535cd2d36739b5bd0c2", size = 900150, upload-time = "2026-04-21T16:10:11.399Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4d/fc/7c8e640e88e584b512c5b924545ccea3a42c57b56caa6afd844d0ffdebb3/pyranges1-1.2.0-py3-none-any.whl", hash = "sha256:110eeee1b8be50c37ae9185d5425f1127e4a547527d9a1a0db74002bb843b61b", size = 939261, upload-time = "2026-01-29T14:04:20.753Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/65/b29e5c27b397fbd2f54d59e73a530f7c2cf97f865789e228734add182e97/pyranges1-1.3.8-py3-none-any.whl", hash = "sha256:0cae73cb2ab8b564e93004350f6c490f759de107b70a6b9431444fabb460db5e", size = 926542, upload-time = "2026-04-21T16:10:09.701Z" },
 ]
 
 [[package]]
@@ -314,17 +328,17 @@ wheels = [
 
 [[package]]
 name = "ruranges"
-version = "0.0.15"
+version = "0.1.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/54/0e/795fade3a937f41f84da9c63ba4181c45a8910d774489f0088c93732c259/ruranges-0.0.15.tar.gz", hash = "sha256:0f349684ff4b6771437a6a2f1c266f4f104bedaf4be811620b0aab2abff6d156", size = 54514, upload-time = "2025-12-17T15:37:10.196Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/25/d0/5d63cfaec2416a7b3bf6253e6c397727a851486a3b71cfb797102b80969b/ruranges-0.1.4.tar.gz", hash = "sha256:b5d8710a0fb36ab364f2543dff4eb450d38360539bd58ec7ecdc5405acdfb5f1", size = 24647, upload-time = "2026-04-16T07:00:51.245Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/aa/46/4baf30e339408eaae21b533c0fabf1640e7798e9076d15212c1b913d090c/ruranges-0.0.15-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:260d8c07e0194db1c224460b272ff9e71e2695ed1fb997dc6486eb0b0943126e", size = 639917, upload-time = "2025-12-17T15:37:05.638Z" },
-    { url = "https://files.pythonhosted.org/packages/62/f3/1f4a413f9cd1daf60fece5eb7755650c29d502cdd14544f1d10204227740/ruranges-0.0.15-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:800cfb09a81035bc85022570875bef4bc507714474685a2aec1586a7714b0cbd", size = 732831, upload-time = "2025-12-17T15:37:06.936Z" },
-    { url = "https://files.pythonhosted.org/packages/68/0c/e153c9578151c5779ad7dc09c97a976cdabdd678e99462c012b366b95353/ruranges-0.0.15-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:24ac23d67ab01bca063c90df42b271ffc6b005c328f6a0964b0a87e4bb3b32f0", size = 639468, upload-time = "2025-12-17T15:37:08.005Z" },
-    { url = "https://files.pythonhosted.org/packages/b3/2d/18190b33be36e2e1ca10416b8350a4040c3b6e0bf755d7c93d937e076d80/ruranges-0.0.15-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:e6d56bf021850028ba5660a6aca346d080bcdeb1c6ce3ed29540756d4a62cc1b", size = 732057, upload-time = "2025-12-17T15:37:09.229Z" },
+    { url = "https://files.pythonhosted.org/packages/d1/15/0453f74e6e9853aa03789e0b915287ec63187959a032924429d71f533b56/ruranges-0.1.4-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:2fc7ff8257ce22656d747724382da7b92450c29e6fa9196b912081e9d9dcf1dc", size = 394049, upload-time = "2026-04-16T07:00:46.169Z" },
+    { url = "https://files.pythonhosted.org/packages/10/dc/723056a5b38480f964a9cf1cf2e7a746c8455c70e0702c206c654020d1d5/ruranges-0.1.4-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:8b6af7012856416abe1e0acfc3974a8595d6eb04eaee3a6c1ad2d2e3ad9f6da4", size = 433703, upload-time = "2026-04-16T07:00:47.696Z" },
+    { url = "https://files.pythonhosted.org/packages/4c/ab/cdd6bf95cd7db58e7ff88d66fa27674e439e22a93212aee190b3e230197f/ruranges-0.1.4-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:5d76c13f65b8ecc134d0a3433ecf46b488850b735cf6b010b3146f7fa9653fde", size = 393598, upload-time = "2026-04-16T07:00:48.845Z" },
+    { url = "https://files.pythonhosted.org/packages/61/31/ba5d48533f1ad8fd18fb459357ad849ad9701adbe6813dfdb4852fa42410/ruranges-0.1.4-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:5835045ce5b594cf9ac69ba1d08dfc847a05f2efb0d8cdc3419dc913ef5e2c2c", size = 432999, upload-time = "2026-04-16T07:00:50.081Z" },
 ]
 
 [[package]]
