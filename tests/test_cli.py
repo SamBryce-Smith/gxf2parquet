@@ -1,4 +1,4 @@
-"""Tests for the gff2parquet CLI."""
+"""Tests for the gxf2parquet CLI."""
 
 import pytest
 import pyranges1 as pr

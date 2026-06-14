@@ -14,7 +14,7 @@ from typing import Generator
 import pandas as pd
 import pyranges1 as pr
 
-from gff2parquet import gtf_to_parquet, read_gxf_parquet, GENCODE_PRESET
+from gxf2parquet import gtf_to_parquet, read_gxf_parquet, GENCODE_PRESET
 
 
 @contextmanager
