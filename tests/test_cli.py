@@ -3,7 +3,7 @@
 import pytest
 import pyranges1 as pr
 
-from gff2parquet.cli import main
+from gxf2parquet.cli import main
 
 
 @pytest.fixture

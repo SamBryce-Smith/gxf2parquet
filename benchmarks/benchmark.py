@@ -3,7 +3,6 @@
 
 import argparse
 import gc
-import os
 import sys
 import tempfile
 import time
@@ -64,7 +63,9 @@ def get_memory_usage(df: pd.DataFrame) -> int:
     return df.memory_usage(deep=True).sum()
 
 
-def benchmark_read_gtf(gtf_path: Path, n_runs: int = 3) -> tuple[float, pd.DataFrame, int]:
+def benchmark_read_gtf(
+    gtf_path: Path, n_runs: int = 3
+) -> tuple[float, pd.DataFrame, int]:
     """Benchmark pyranges GTF read time.
 
     Returns:
@@ -141,7 +142,14 @@ def benchmark_filtered_read(
             start = time.perf_counter()
             df = read_gxf_parquet(
                 parquet_path,
-                columns=["Chromosome", "Start", "End", "Strand", "gene_id", "gene_name"],
+                columns=[
+                    "Chromosome",
+                    "Start",
+                    "End",
+                    "Strand",
+                    "gene_id",
+                    "gene_name",
+                ],
                 filters=[("Chromosome", "==", chromosome), ("Feature", "==", feature)],
             )
             elapsed = time.perf_counter() - start
@@ -224,7 +232,15 @@ def benchmark_region_query(
 
             df = read_gxf_parquet(
                 parquet_path,
-                columns=["Chromosome", "Start", "End", "Strand", "Feature", "gene_id", "gene_name"],
+                columns=[
+                    "Chromosome",
+                    "Start",
+                    "End",
+                    "Strand",
+                    "Feature",
+                    "gene_id",
+                    "gene_name",
+                ],
                 filters=filters,
             )
             elapsed = time.perf_counter() - start_time
@@ -269,7 +285,15 @@ def benchmark_naive_region_query(
                 filtered_gr = gr.loci[chromosome, start:end]
 
             df = pd.DataFrame(filtered_gr)[
-                ["Chromosome", "Start", "End", "Strand", "Feature", "gene_id", "gene_name"]
+                [
+                    "Chromosome",
+                    "Start",
+                    "End",
+                    "Strand",
+                    "Feature",
+                    "gene_id",
+                    "gene_name",
+                ]
             ]
             elapsed = time.perf_counter() - start_time
 
@@ -363,7 +387,9 @@ def main():
         print("FULL READ TIME COMPARISON")
         print("=" * 60)
 
-        gtf_read_time, gtf_df, gtf_peak_memory = benchmark_read_gtf(args.gtf_path, args.n_runs)
+        gtf_read_time, gtf_df, gtf_peak_memory = benchmark_read_gtf(
+            args.gtf_path, args.n_runs
+        )
         parquet_read_time, parquet_df, parquet_peak_memory = benchmark_read_parquet(
             parquet_path, args.n_runs
         )
@@ -373,7 +399,9 @@ def main():
         print(f"Parquet read time:         {parquet_read_time:.3f}s")
         print(f"Parquet peak memory:       {format_size(parquet_peak_memory)}")
         print(f"Speedup (time):            {gtf_read_time / parquet_read_time:.1f}x")
-        print(f"Memory reduction (peak):   {(1 - parquet_peak_memory / gtf_peak_memory) * 100:.1f}%")
+        print(
+            f"Memory reduction (peak):   {(1 - parquet_peak_memory / gtf_peak_memory) * 100:.1f}%"
+        )
 
         # Memory usage comparison
         print("\n" + "=" * 60)
@@ -396,13 +424,17 @@ def main():
         filter_chrom = args.filter_chrom
         if filter_chrom not in available_chroms:
             filter_chrom = available_chroms[0]
-            print(f"Note: Using {filter_chrom} (requested {args.filter_chrom} not found)")
+            print(
+                f"Note: Using {filter_chrom} (requested {args.filter_chrom} not found)"
+            )
 
         # Benchmark naive approach: read full GTF and filter with pandas
-        naive_filtered_time, naive_filtered_df, naive_filtered_peak_memory = benchmark_naive_filtered_read(
-            args.gtf_path,
-            filter_chrom,
-            n_runs=args.n_runs,
+        naive_filtered_time, naive_filtered_df, naive_filtered_peak_memory = (
+            benchmark_naive_filtered_read(
+                args.gtf_path,
+                filter_chrom,
+                n_runs=args.n_runs,
+            )
         )
 
         # Benchmark parquet filtered read
@@ -412,34 +444,53 @@ def main():
             n_runs=args.n_runs,
         )
 
-        naive_filtered_memory = get_memory_usage(naive_filtered_df)
         filtered_memory = get_memory_usage(filtered_df)
 
         print(f"Naive approach (GTF + pandas filter):  {naive_filtered_time:.3f}s")
-        print(f"Naive peak memory:                      {format_size(naive_filtered_peak_memory)}")
+        print(
+            f"Naive peak memory:                      {format_size(naive_filtered_peak_memory)}"
+        )
         print(f"Parquet filtered read:                  {filtered_read_time:.3f}s")
-        print(f"Parquet peak memory:                    {format_size(filtered_peak_memory)}")
-        print(f"Speedup (time):                         {naive_filtered_time / filtered_read_time:.1f}x")
-        print(f"Memory reduction (peak):                {(1 - filtered_peak_memory / naive_filtered_peak_memory) * 100:.1f}%")
+        print(
+            f"Parquet peak memory:                    {format_size(filtered_peak_memory)}"
+        )
+        print(
+            f"Speedup (time):                         {naive_filtered_time / filtered_read_time:.1f}x"
+        )
+        print(
+            f"Memory reduction (peak):                {(1 - filtered_peak_memory / naive_filtered_peak_memory) * 100:.1f}%"
+        )
         print(f"\nFiltered rows:         {len(filtered_df):,}")
         print(f"Filtered memory:       {format_size(filtered_memory)}")
-        print(f"Memory reduction:      {(1 - filtered_memory / parquet_memory) * 100:.1f}%")
+        print(
+            f"Memory reduction:      {(1 - filtered_memory / parquet_memory) * 100:.1f}%"
+        )
 
         # Region query comparison (if region parameters provided)
-        if args.region_chrom and args.region_start is not None and args.region_end is not None:
+        if (
+            args.region_chrom
+            and args.region_start is not None
+            and args.region_end is not None
+        ):
             print("\n" + "=" * 60)
-            strand_str = f", {args.region_strand}" if args.region_strand else " (unstranded)"
-            print(f"REGION QUERY COMPARISON ({args.region_chrom}:{args.region_start}-{args.region_end}{strand_str})")
+            strand_str = (
+                f", {args.region_strand}" if args.region_strand else " (unstranded)"
+            )
+            print(
+                f"REGION QUERY COMPARISON ({args.region_chrom}:{args.region_start}-{args.region_end}{strand_str})"
+            )
             print("=" * 60)
 
             # Benchmark naive approach: read full GTF and filter with gr.loci
-            naive_region_time, naive_region_df, naive_region_peak_memory = benchmark_naive_region_query(
-                args.gtf_path,
-                args.region_chrom,
-                args.region_start,
-                args.region_end,
-                args.region_strand,
-                n_runs=args.n_runs,
+            naive_region_time, naive_region_df, naive_region_peak_memory = (
+                benchmark_naive_region_query(
+                    args.gtf_path,
+                    args.region_chrom,
+                    args.region_start,
+                    args.region_end,
+                    args.region_strand,
+                    n_runs=args.n_runs,
+                )
             )
 
             # Benchmark parquet region query
@@ -452,18 +503,25 @@ def main():
                 n_runs=args.n_runs,
             )
 
-            naive_region_memory = get_memory_usage(naive_region_df)
             region_memory = get_memory_usage(region_df)
 
             print(f"Naive approach (GTF + gr.loci):  {naive_region_time:.3f}s")
-            print(f"Naive peak memory:               {format_size(naive_region_peak_memory)}")
+            print(
+                f"Naive peak memory:               {format_size(naive_region_peak_memory)}"
+            )
             print(f"Parquet region query:            {region_time:.3f}s")
             print(f"Parquet peak memory:             {format_size(region_peak_memory)}")
-            print(f"Speedup (time):                  {naive_region_time / region_time:.1f}x")
-            print(f"Memory reduction (peak):         {(1 - region_peak_memory / naive_region_peak_memory) * 100:.1f}%")
+            print(
+                f"Speedup (time):                  {naive_region_time / region_time:.1f}x"
+            )
+            print(
+                f"Memory reduction (peak):         {(1 - region_peak_memory / naive_region_peak_memory) * 100:.1f}%"
+            )
             print(f"\nRegion query rows:     {len(region_df):,}")
             print(f"Region query memory:   {format_size(region_memory)}")
-            print(f"Memory reduction:      {(1 - region_memory / parquet_memory) * 100:.1f}%")
+            print(
+                f"Memory reduction:      {(1 - region_memory / parquet_memory) * 100:.1f}%"
+            )
 
         # Summary
         print("\n" + "=" * 60)

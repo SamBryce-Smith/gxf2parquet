@@ -6,8 +6,8 @@ import pyarrow.parquet as pq
 import pytest
 import pyranges1 as pr
 
-from gff2parquet import gtf_to_parquet, query_gxf_parquet
-from gff2parquet.schema import ENSEMBL_PRESET
+from gxf2parquet import gtf_to_parquet, query_gxf_parquet
+from gxf2parquet.schema import ENSEMBL_PRESET
 
 
 @pytest.fixture
@@ -25,13 +25,13 @@ def multi_chrom_parquet(tmp_path):
     """Synthetic Parquet with two chromosomes and both strands for multi-region tests."""
     data = {
         "Chromosome": ["chr1", "chr1", "chr1", "chr2", "chr2", "chr2"],
-        "Start":      [1001,   2001,   3001,   5001,   6001,   7001],
-        "End":        [1500,   2500,   3500,   5500,   6500,   7500],
-        "Strand":     ["+",    "+",    "-",    "+",    "-",    "-"],
-        "Feature":    ["gene", "exon", "gene", "gene", "exon", "gene"],
-        "Source":     ["test"] * 6,
-        "Score":      ["."] * 6,
-        "Frame":      ["."] * 6,
+        "Start": [1001, 2001, 3001, 5001, 6001, 7001],
+        "End": [1500, 2500, 3500, 5500, 6500, 7500],
+        "Strand": ["+", "+", "-", "+", "-", "-"],
+        "Feature": ["gene", "exon", "gene", "gene", "exon", "gene"],
+        "Source": ["test"] * 6,
+        "Score": ["."] * 6,
+        "Frame": ["."] * 6,
     }
     table = pa.Table.from_pandas(pd.DataFrame(data), preserve_index=False)
     parquet_path = tmp_path / "multi_chrom.parquet"
@@ -90,13 +90,19 @@ class TestQueryGxfParquetDataFrame:
         assert (df["End"] <= end).all()
 
     def test_strand_filter(self, parquet_from_ensembl):
-        df_plus = query_gxf_parquet(parquet_from_ensembl, strand="plus", as_pyranges=False)
-        df_minus = query_gxf_parquet(parquet_from_ensembl, strand="minus", as_pyranges=False)
+        df_plus = query_gxf_parquet(
+            parquet_from_ensembl, strand="plus", as_pyranges=False
+        )
+        df_minus = query_gxf_parquet(
+            parquet_from_ensembl, strand="minus", as_pyranges=False
+        )
         assert (df_plus["Strand"] == "+").all()
         assert (df_minus["Strand"] == "-").all()
 
     def test_multiple_regions_or_combined(self, multi_chrom_parquet):
-        df = query_gxf_parquet(multi_chrom_parquet, regions=["chr1", "chr2"], as_pyranges=False)
+        df = query_gxf_parquet(
+            multi_chrom_parquet, regions=["chr1", "chr2"], as_pyranges=False
+        )
         assert set(df["Chromosome"].unique()) == {"chr1", "chr2"}
 
     def test_no_results_returns_empty_dataframe(self, parquet_from_ensembl):

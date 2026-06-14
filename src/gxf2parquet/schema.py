@@ -39,13 +39,13 @@ GENCODE_PRESET = SchemaPreset(
         "Source",
         "Feature",
         "Strand",
-        "Score",   # always "." in GENCODE; 1-element dict is near-zero overhead
-        "Frame",   # 4 values: ".", "0", "1", "2"
+        "Score",  # always "." in GENCODE; 1-element dict is near-zero overhead
+        "Frame",  # 4 values: ".", "0", "1", "2"
         # GENCODE attribute columns (low-cardinality, used for filtering)
         "gene_type",
         "transcript_type",
-        "level",                    # annotation confidence: "1", "2", "3"
-        "transcript_support_level", # TSL: "1"–"5", "NA"
+        "level",  # annotation confidence: "1", "2", "3"
+        "transcript_support_level",  # TSL: "1"–"5", "NA"
     ],
     list_columns=["tag", "ont"],
     int16_columns=[
@@ -62,14 +62,14 @@ ENSEMBL_PRESET = SchemaPreset(
         "Source",
         "Feature",
         "Strand",
-        "Score",   # always "." in Ensembl releases
-        "Frame",   # 4 values: ".", "0", "1", "2"
+        "Score",  # always "." in Ensembl releases
+        "Frame",  # 4 values: ".", "0", "1", "2"
         # Ensembl attribute columns (low-cardinality, used for filtering)
         "gene_biotype",
         "transcript_biotype",
-        "gene_source",              # e.g. "havana", "ensembl_havana", "ensembl"
-        "transcript_source",        # same small vocabulary
-        "transcript_support_level", # TSL: "1"–"5", "NA"
+        "gene_source",  # e.g. "havana", "ensembl_havana", "ensembl"
+        "transcript_source",  # same small vocabulary
+        "transcript_support_level",  # TSL: "1"–"5", "NA"
     ],
     list_columns=["tag"],
     int16_columns=[

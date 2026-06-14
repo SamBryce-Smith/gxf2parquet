@@ -1,10 +1,6 @@
 """Tests for write.py helpers."""
 
-from pathlib import Path
-
-import pytest
-
-from gff2parquet.write import detect_output_format
+from gxf2parquet.write import detect_output_format
 
 
 class TestDetectOutputFormat:

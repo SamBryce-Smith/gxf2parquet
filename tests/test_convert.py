@@ -440,11 +440,15 @@ class TestPresets:
                 assert df[col].dtype.name == "category", f"{col} should be categorical"
 
         # All integer columns declared in the preset should round-trip as integer dtype
-        for col in [*preset.int16_columns, *preset.int32_columns, *preset.int64_columns]:
+        for col in [
+            *preset.int16_columns,
+            *preset.int32_columns,
+            *preset.int64_columns,
+        ]:
             if col in df.columns:
-                assert pd.api.types.is_integer_dtype(
-                    df[col]
-                ), f"{col} should be integer dtype"
+                assert pd.api.types.is_integer_dtype(df[col]), (
+                    f"{col} should be integer dtype"
+                )
 
     @pytest.mark.parametrize("gtf_fixture,preset", GTF_FIXTURES)
     def test_preset_as_pyranges(self, gtf_fixture, preset, temp_parquet_path, request):

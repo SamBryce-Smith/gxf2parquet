@@ -152,7 +152,14 @@ def _cmd_query(args: argparse.Namespace) -> int:
             df = pd.DataFrame(gr).copy()
             df["Start"] = df["Start"] + 1  # 0-based PyRanges → 1-based for storage
             missing_core = {
-                "Chromosome", "Source", "Feature", "Start", "End", "Score", "Strand", "Frame"
+                "Chromosome",
+                "Source",
+                "Feature",
+                "Start",
+                "End",
+                "Score",
+                "Strand",
+                "Frame",
             } - set(df.columns)
             if missing_core:
                 warnings.warn(
