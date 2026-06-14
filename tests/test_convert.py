@@ -727,6 +727,31 @@ class TestGFFPartitioning:
             assert len(gr) > 0
 
 
+class TestDuplicateAttributes:
+    """Test that duplicate GTF attributes (e.g. multiple tag values) are preserved."""
+
+    @pytest.fixture
+    def duplicate_tags_gtf_path(self):
+        return Path(__file__).parent / "gencode.exampleduplicatetags.gtf"
+
+    def test_duplicate_tag_values_preserved(self, duplicate_tags_gtf_path, temp_parquet_path):
+        """Rows with multiple tag values should have them as a comma-separated string."""
+        gtf_to_parquet(duplicate_tags_gtf_path, temp_parquet_path, preset=GENCODE_PRESET)
+        df = read_gxf_parquet(temp_parquet_path, as_pyranges=False)
+
+        assert "tag" in df.columns
+        multi_tag_rows = df["tag"].dropna().str.contains(",")
+        assert multi_tag_rows.any(), "Expected at least one row with multiple tag values"
+
+        # Rows with both 'basic' and 'Ensembl_canonical' tags should have both in tag column
+        both_tags = df["tag"].dropna().apply(
+            lambda t: "basic" in t.split(",") and "Ensembl_canonical" in t.split(",")
+        )
+        assert both_tags.any(), (
+            "Expected rows where tag contains both 'basic' and 'Ensembl_canonical'"
+        )
+
+
 class TestGFFCompression:
     """Test compression options for GFF files."""
 
