@@ -137,7 +137,7 @@ def gtf_to_parquet(
         compression: Compression codec ('zstd', 'snappy', 'gzip', 'none').
     """
     # Parse GTF using pyranges (pyranges1 returns a DataFrame subclass)
-    gr = pr.read_gtf(str(gtf_path))
+    gr = pr.read_gtf(str(gtf_path), duplicate_attr=True)
     df = pd.DataFrame(gr)
 
     _convert_to_parquet(

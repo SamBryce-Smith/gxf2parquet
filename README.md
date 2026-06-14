@@ -2,9 +2,33 @@
 
 Parse and transform Gene Transfer Format (GTF) annotation files to Apache Parquet format for more efficient and powerful downstream analysis.
 
+## Contents
+
+- [Motivation](#motivation)
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+  - [CLI Usage](#cli-usage)
+  - [Python API](#python-api)
+- [Schema Presets](#schema-presets)
+- [Coordinate System](#coordinate-system)
+- [Benchmarks](#benchmarks)
+- [Developer Guide](#developer-guide)
+  - [Setting Up](#setting-up)
+  - [Pre-commit Hooks](#pre-commit-hooks)
+  - [Testing](#testing)
+  - [Benchmarking](#benchmarking)
+- [License](#license)
+
+---
+
 ## Motivation
 
 I heavily use the pyranges1 library during my day-to-day analysis when working with transcriptome annotations and intervals. Loading a full GTF file into memory is fairly time intensive (~ 1 min), mainly due to the requirement to perform complex parsing of the attribute field to extract key-value pairs, which is inconvenient in interactive/exploratory analysis. I also regularly find myself only needing a subset of the intervals and metadata for analysis (e.g. exon intervals, protein coding genes), which is currently only possible by first reading and parsing the complete GTF file into a pyranges object (pandas dataframe) into memory before subsetting.
+
+[↑ Back to contents](#contents)
+
+---
 
 ## Features
 
@@ -14,47 +38,21 @@ I heavily use the pyranges1 library during my day-to-day analysis when working w
 - **Compatible with pyranges1**: Returns pyranges1 objects by default for downstream analysis, relying on the same core dependencies (pandas, pyarrow)
 - **Reduced disk space usage with Parquet vs uncompressed/gzipped TSV**
 
+[↑ Back to contents](#contents)
+
+---
+
 ## Installation
 
-Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
-
-### General users
+Requires Python 3.12+.
 
 ```bash
 uv pip install gxf2parquet
 ```
 
-### Developers
+[↑ Back to contents](#contents)
 
-From the repository root, sync the project environment (includes dev dependencies by default):
-
-```bash
-uv sync
-```
-
-To install without dev dependencies:
-
-```bash
-uv sync --no-dev
-```
-
-#### Setting up pre-commit hooks
-
-The project uses [prek](https://prek.j178.dev/) for pre-commit hooks. To enable automatic checks on every commit:
-
-```bash
-# Install the git hooks
-uv run prek install
-
-# Run hooks manually on all files (optional)
-uv run prek run --all-files
-```
-
-The configured hooks will automatically run before each commit to:
-- Validate TOML file syntax
-- Detect accidentally committed private keys
-- Ensure executable scripts have proper shebangs
-- Run ruff for linting and python code formatting
+---
 
 ## Quick Start
 
@@ -137,40 +135,40 @@ gr = read_gtf_parquet(
 df = read_gtf_parquet("gencode.parquet", as_pyranges=False)
 ```
 
-## Testing
+[↑ Back to contents](#contents)
 
-```bash
-# Run all tests
-uv run pytest
+---
 
-# Run with verbose output
-uv run pytest -v
+## Schema Presets
 
-# Run a specific test
-uv run pytest tests/test_convert.py::TestRoundtrip::test_roundtrip
-```
+Two presets are available for common GTF sources:
 
-## Benchmarking
+- **GENCODE_PRESET**: Categorical columns for `gene_type`, `transcript_type`
+- **ENSEMBL_PRESET**: Categorical columns for `gene_biotype`, `transcript_biotype`
 
-The benchmark script compares conversion time, file size, read performance, and memory usage between GTF and Parquet formats.
+[↑ Back to contents](#contents)
+
+---
+
+## Coordinate System
+
+The package stores GTF-native coordinates (1-based, closed intervals) in the Parquet file.
+
+When reading with `read_gxf_parquet()`:
+- **Default behavior** (`as_pyranges=True`): Returns a PyRanges object with 0-based, half-open coordinates (Start coordinate is automatically converted by subtracting 1)
+- **DataFrame mode** (`as_pyranges=False`): Returns a pandas DataFrame with 1-based coordinates as stored in the Parquet file
+
+This ensures compatibility with both the GTF standard and PyRanges conventions.
+
+[↑ Back to contents](#contents)
+
+---
+
+## Benchmarks
+
+The benchmark below compares read performance and memory usage between GTF and Parquet formats.
 
 ### Example: GENCODE v40 chr2 & chr20-22 Subset
-
-```bash
-# Create a smaller subset of multiple chromosomes for testing
-grep 'chr2' gencode.v40.annotation.sorted.gtf > gencode.v40.chr2s.annotation.sorted.gtf
-
-# Run benchmark with filtered reads
-uv run benchmarks/benchmark.py gencode.v40.chr2s.annotation.sorted.gtf --filter-chrom chr2
-
-# Run benchmark with region query (e.g., chr2:30000-500000 on + strand)
-uv run benchmarks/benchmark.py gencode.v40.chr2s.annotation.sorted.gtf \
-    --filter-chrom chr2 \
-    --region-chrom chr2 \
-    --region-start 30000 \
-    --region-end 500000 \
-    --region-strand +
-```
 
 **Results** (435,497 rows, 25 columns):
 
@@ -246,22 +244,80 @@ File size reduction:   97.3%
 Read speedup:          53.3x
 ```
 
-## Schema Presets
+[↑ Back to contents](#contents)
 
-Two presets are available for common GTF sources:
+---
 
-- **GENCODE_PRESET**: Categorical columns for `gene_type`, `transcript_type`
-- **ENSEMBL_PRESET**: Categorical columns for `gene_biotype`, `transcript_biotype`
+## Developer Guide
 
-## Coordinate System
+### Setting Up
 
-The package stores GTF-native coordinates (1-based, closed intervals) in the Parquet file.
+Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 
-When reading with `read_gxf_parquet()`:
-- **Default behavior** (`as_pyranges=True`): Returns a PyRanges object with 0-based, half-open coordinates (Start coordinate is automatically converted by subtracting 1)
-- **DataFrame mode** (`as_pyranges=False`): Returns a pandas DataFrame with 1-based coordinates as stored in the Parquet file
+From the repository root, sync the project environment (includes dev dependencies by default):
 
-This ensures compatibility with both the GTF standard and PyRanges conventions.
+```bash
+uv sync
+```
+
+To install without dev dependencies:
+
+```bash
+uv sync --no-dev
+```
+
+### Pre-commit Hooks
+
+The project uses [prek](https://prek.j178.dev/) for pre-commit hooks. To enable automatic checks on every commit:
+
+```bash
+# Install the git hooks
+uv run prek install
+
+# Run hooks manually on all files (optional)
+uv run prek run --all-files
+```
+
+The configured hooks will automatically run before each commit to:
+- Validate TOML file syntax
+- Detect accidentally committed private keys
+- Ensure executable scripts have proper shebangs
+- Run ruff for linting and python code formatting
+
+### Testing
+
+```bash
+# Run all tests
+uv run pytest
+
+# Run with verbose output
+uv run pytest -v
+
+# Run a specific test
+uv run pytest tests/test_convert.py::TestRoundtrip::test_roundtrip
+```
+
+### Benchmarking
+
+```bash
+# Create a smaller subset of multiple chromosomes for testing
+grep 'chr2' gencode.v40.annotation.sorted.gtf > gencode.v40.chr2s.annotation.sorted.gtf
+
+# Run benchmark with filtered reads
+uv run benchmarks/benchmark.py gencode.v40.chr2s.annotation.sorted.gtf --filter-chrom chr2
+
+# Run benchmark with region query (e.g., chr2:30000-500000 on + strand)
+uv run benchmarks/benchmark.py gencode.v40.chr2s.annotation.sorted.gtf \
+    --filter-chrom chr2 \
+    --region-chrom chr2 \
+    --region-start 30000 \
+    --region-end 500000 \
+    --region-strand +
+```
+
+[↑ Back to contents](#contents)
+
+---
 
 ## License
 
