@@ -197,3 +197,21 @@ pr.assistant.export_docs("pr_docs.txt")
 ## CLI Reference
 
 See README.md for comprehensive CLI usage examples. The CLI command is `gxf2parquet`.
+
+### `query` output formats
+
+The `query` subcommand selects its output format via `-of` / `--output-format`
+(choices: `gtf`, `gff3`, `bed`, `tsv`, `csv`, `parquet`). When omitted, the format is
+inferred from the `--output` file extension, then the source format stored in the Parquet
+metadata, falling back to `gtf`.
+
+- **gtf / gff3 / bed**: the core columns are **always** included regardless of `--columns`.
+  Core columns passed to `--columns` are silently ignored (deduplicated), so `--columns`
+  effectively filters attribute/optional columns only. BED keeps any non-standard columns
+  as extra fields past the standard 6. The core sets live in
+  `src/gxf2parquet/write.py` as `CORE_GXF_COLUMNS` and `CORE_BED_COLUMNS`.
+- **tsv / csv**: honour `--columns` verbatim and always emit a header row. Coordinates are
+  1-based (as stored) by default; `--xsv-zero-based` switches to BED-like 0-based Start
+  (the flag is ignored, with a warning, for other formats).
+- **parquet**: honours `--columns` verbatim; warns if core GTF columns are missing (the
+  file will not be convertible back to valid GTF/GFF3).

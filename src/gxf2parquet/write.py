@@ -4,20 +4,43 @@ from __future__ import annotations
 
 from pathlib import Path
 
+# The eight core GTF/GFF columns. Always emitted for gtf/gff3 output regardless of
+# any ``--columns`` selection; also used to warn when writing Parquet without them.
+CORE_GXF_COLUMNS = (
+    "Chromosome",
+    "Source",
+    "Feature",
+    "Start",
+    "End",
+    "Score",
+    "Strand",
+    "Frame",
+)
 
-def detect_output_format(output: Path | None, *, default: str = "gtf") -> str:
+# Columns preserved for BED output. ``Name`` is absent in GXF data and is filled with
+# ``"."`` by ``PyRanges.to_bed``; ``Score`` and ``Strand`` carry real values worth keeping.
+CORE_BED_COLUMNS = (
+    "Chromosome",
+    "Start",
+    "End",
+    "Score",
+    "Strand",
+)
+
+
+def detect_output_format(output: Path | None) -> str | None:
     """Infer the output format from a file extension.
 
     Args:
         output: Output path, or ``None`` for stdout.
-        default: Fallback format when ``output`` is ``None`` or the extension is
-            not recognised. Must be one of ``'gtf'``, ``'gff3'``, ``'parquet'``.
 
     Returns:
-        One of ``'gtf'``, ``'gff3'``, or ``'parquet'``.
+        One of ``'gtf'``, ``'gff3'``, ``'bed'``, ``'tsv'``, ``'csv'``, or
+        ``'parquet'``, or ``None`` when ``output`` is ``None`` or the extension is
+        not recognised (the caller applies its own fallback).
     """
     if output is None:
-        return default
+        return None
 
     name = output.name.lower()
     if name.endswith(".gz"):
@@ -27,7 +50,13 @@ def detect_output_format(output: Path | None, *, default: str = "gtf") -> str:
         return "gtf"
     if name.endswith(".gff3") or name.endswith(".gff"):
         return "gff3"
+    if name.endswith(".bed"):
+        return "bed"
+    if name.endswith(".tsv"):
+        return "tsv"
+    if name.endswith(".csv"):
+        return "csv"
     if name.endswith(".parquet"):
         return "parquet"
 
-    return default
+    return None

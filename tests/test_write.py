@@ -1,10 +1,6 @@
 """Tests for write.py helpers."""
 
-from pathlib import Path
-
-import pytest
-
-from gff2parquet.write import detect_output_format
+from gxf2parquet.write import detect_output_format
 
 
 class TestDetectOutputFormat:
@@ -17,17 +13,23 @@ class TestDetectOutputFormat:
     def test_gff_extension(self, tmp_path):
         assert detect_output_format(tmp_path / "out.gff") == "gff3"
 
+    def test_bed_extension(self, tmp_path):
+        assert detect_output_format(tmp_path / "out.bed") == "bed"
+
+    def test_tsv_extension(self, tmp_path):
+        assert detect_output_format(tmp_path / "out.tsv") == "tsv"
+
+    def test_csv_extension(self, tmp_path):
+        assert detect_output_format(tmp_path / "out.csv") == "csv"
+
     def test_parquet_extension(self, tmp_path):
         assert detect_output_format(tmp_path / "out.parquet") == "parquet"
 
     def test_gz_stripped(self, tmp_path):
         assert detect_output_format(tmp_path / "out.gtf.gz") == "gtf"
 
-    def test_none_returns_default(self):
-        assert detect_output_format(None) == "gtf"
+    def test_none_returns_none(self):
+        assert detect_output_format(None) is None
 
-    def test_none_custom_default(self):
-        assert detect_output_format(None, default="gff3") == "gff3"
-
-    def test_unknown_extension_returns_default(self, tmp_path):
-        assert detect_output_format(tmp_path / "out.bed") == "gtf"
+    def test_unknown_extension_returns_none(self, tmp_path):
+        assert detect_output_format(tmp_path / "out.xyz") is None

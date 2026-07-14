@@ -6,8 +6,8 @@ import pyarrow.parquet as pq
 import pytest
 import pyranges1 as pr
 
-from gff2parquet import gtf_to_parquet, query_gxf_parquet
-from gff2parquet.schema import ENSEMBL_PRESET
+from gxf2parquet import gtf_to_parquet, query_gxf_parquet
+from gxf2parquet.schema import ENSEMBL_PRESET
 
 
 @pytest.fixture
