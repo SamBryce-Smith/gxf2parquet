@@ -7,8 +7,8 @@ import pyarrow.parquet as pq
 import pytest
 import pyranges1 as pr
 
-from gff2parquet import gff_to_parquet, gtf_to_parquet, read_source_format
-from gff2parquet.convert import METADATA_SOURCE_FORMAT
+from gxf2parquet import gff_to_parquet, gtf_to_parquet, read_source_format
+from gxf2parquet.convert import METADATA_SOURCE_FORMAT
 
 
 @pytest.fixture

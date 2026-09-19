@@ -12,7 +12,7 @@ from .convert import METADATA_SOURCE_FORMAT
 def read_source_format(parquet_path: str | Path) -> str | None:
     """Read the source format from Parquet file-level metadata.
 
-    Returns the value of the ``gff2parquet.source_format`` key (e.g. ``"gtf"``
+    Returns the value of the ``gxf2parquet.source_format`` key (e.g. ``"gtf"``
     or ``"gff3"``), or ``None`` if the key is absent (e.g. files built before
     this metadata was added).
 

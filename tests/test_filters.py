@@ -2,7 +2,7 @@
 
 import pytest
 
-from gff2parquet.filters import (
+from gxf2parquet.filters import (
     build_filters,
     parse_filter,
     parse_region,
