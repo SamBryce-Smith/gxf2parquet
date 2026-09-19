@@ -79,6 +79,8 @@ gxf2parquet query gencode.parquet --region chr1 --filter Feature eq gene
 # Query: region with strand filter, keep a couple of attribute columns, write to GTF file.
 # For gtf/gff3/bed output the core columns are ALWAYS included; --columns filters
 # attribute/optional columns only (core columns listed here are ignored).
+# Only intervals fully contained within the region are returned.
+# Coordinates are assumed to follow GFF/GTF convention
 gxf2parquet query gencode.parquet \
     --region chr1:11869-14409 --strand plus \
     --columns gene_name transcript_id \
@@ -180,6 +182,8 @@ This ensures compatibility with both the GTF standard and PyRanges conventions.
 ## Benchmarks
 
 The benchmark below compares read performance and memory usage between GTF and Parquet formats.
+
+Note(SBS): I'm not fully satisfied with the benchmarking workflow as presented here, it is likely to change significantly. Take the figures with a pinch of salt. At the moment, comparisons are deliberately kept 'biased' by comparing to the naive pyranges1 workflow. More appropriate benchmarks would include comparing against other competitors with comparable functionality e.g. tabix, GFFx, gffutils, polars-bio, gff2parquet (UriNeli) etc.).
 
 ### Example: GENCODE v40 chr2 & chr20-22 Subset
 
