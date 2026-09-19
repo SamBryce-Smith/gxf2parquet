@@ -10,7 +10,7 @@ from .filters import parse_filter, parse_strand
 from .query import query_gxf_parquet
 from .read import read_source_format
 from .schema import get_preset
-from .write import detect_output_format
+from .write import CORE_BED_COLUMNS, CORE_GXF_COLUMNS, detect_output_format
 
 
 def _cmd_build(args: argparse.Namespace) -> int:
@@ -100,45 +100,82 @@ def _cmd_query(args: argparse.Namespace) -> int:
             print(f"Error: {e}", file=sys.stderr)
             return 1
 
+    # Determine output format: explicit --output-format > extension > Parquet
+    # metadata > "gtf".
+    output = args.output
+    fmt = (
+        args.output_format
+        or detect_output_format(output)
+        or read_source_format(args.input)
+        or "gtf"
+    )
+
+    if args.xsv_zero_based and fmt not in ("tsv", "csv"):
+        warnings.warn(
+            f"--xsv-zero-based is ignored for non-tsv/csv output (format is {fmt!r}).",
+            UserWarning,
+            stacklevel=2,
+        )
+
+    # For gtf/gff3/bed the core columns are always included, so any core columns in
+    # --columns are silently ignored (deduplicated). tsv/csv/parquet honour --columns
+    # verbatim.
+    required = {
+        "gtf": CORE_GXF_COLUMNS,
+        "gff3": CORE_GXF_COLUMNS,
+        "bed": CORE_BED_COLUMNS,
+    }.get(fmt, ())
+    read_columns = args.columns or None
+    if args.columns and required:
+        read_columns = list(dict.fromkeys([*required, *args.columns]))
+
+    # tsv/csv want a plain DataFrame (1-based coordinates as stored); everything else
+    # works from a PyRanges (0-based).
+    as_pyranges = fmt not in ("tsv", "csv")
+
     try:
-        gr = query_gxf_parquet(
+        result = query_gxf_parquet(
             args.input,
             regions=regions,
             strand=strand_arg,
             filters=extra_filters,
-            columns=args.columns or None,
-            as_pyranges=True,
+            columns=read_columns,
+            as_pyranges=as_pyranges,
         )
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
 
-    # Determine output format: explicit --format > extension > Parquet metadata > "gtf"
-    output = args.output
-    if args.format:
-        fmt = args.format
-    elif output is not None and detect_output_format(output) != "gtf":
-        fmt = detect_output_format(output)
-    else:
-        fmt = read_source_format(args.input) or "gtf"
-        if output is not None:
-            detected = detect_output_format(output)
-            if detected == "parquet":
-                fmt = "parquet"
-
     try:
         if fmt == "gtf":
-            content = gr.to_gtf()
+            content = result.to_gtf()
             if output is None:
                 sys.stdout.write(content)
             else:
                 output.write_text(content)
         elif fmt == "gff3":
-            content = "##gff-version 3\n" + gr.to_gff3()
+            content = "##gff-version 3\n" + result.to_gff3()
             if output is None:
                 sys.stdout.write(content)
             else:
                 output.write_text(content)
+        elif fmt == "bed":
+            # keep=True retains non-standard columns as extra fields past the standard 6.
+            content = result.to_bed(keep=True)
+            if output is None:
+                sys.stdout.write(content)
+            else:
+                output.write_text(content)
+        elif fmt in ("tsv", "csv"):
+            df = result
+            if args.xsv_zero_based:
+                df = df.copy()
+                df["Start"] = df["Start"] - 1  # 1-based (stored) → 0-based (BED-like)
+            sep = "\t" if fmt == "tsv" else ","
+            if output is None:
+                sys.stdout.write(df.to_csv(sep=sep, index=False, header=True))
+            else:
+                df.to_csv(str(output), sep=sep, index=False, header=True)
         elif fmt == "parquet":
             if output is None:
                 print(
@@ -149,18 +186,9 @@ def _cmd_query(args: argparse.Namespace) -> int:
             import pyarrow as pa
             import pyarrow.parquet as pq
 
-            df = pd.DataFrame(gr).copy()
+            df = pd.DataFrame(result).copy()
             df["Start"] = df["Start"] + 1  # 0-based PyRanges → 1-based for storage
-            missing_core = {
-                "Chromosome",
-                "Source",
-                "Feature",
-                "Start",
-                "End",
-                "Score",
-                "Strand",
-                "Frame",
-            } - set(df.columns)
+            missing_core = set(CORE_GXF_COLUMNS) - set(df.columns)
             if missing_core:
                 warnings.warn(
                     f"Writing Parquet output without the following core GTF columns: "
@@ -264,15 +292,26 @@ examples:
   # All genes on chr1, written as GTF to stdout
   gxf2parquet query gencode.parquet --region chr1 --filter Feature eq gene
 
-  # Region query with strand, select subset of attribute columns, write to GTF file
-  # (all 8 core GTF columns must be included; extra attribute columns are optional)
-  gxf2parquet query gencode.parquet \\
+  # Region query with strand, keep a couple of attribute columns, write to GTF file.
+  # Core GTF columns are always included; --columns filters attributes only.
+  gff2parquet query gencode.parquet \\
       --region chr1:11869-14409 --strand plus \\
-      --columns Chromosome Source Feature Start End Score Strand Frame gene_name transcript_id \\
+      --columns gene_name transcript_id \\
       --output chr1_region.gtf
 
-  # Region query selecting non-standard columns — write to Parquet (not GTF/GFF3)
-  gxf2parquet query gencode.parquet \\
+  # BED output — standard 6 columns plus gene_name as an extra field
+  gff2parquet query gencode.parquet \\
+      --region chr1:11869-14409 --strand plus \\
+      --columns gene_name --output chr1_region.bed
+
+  # TSV output with a header row (1-based coords; add --xsv-zero-based for BED-like)
+  gff2parquet query gencode.parquet \\
+      --filter Feature eq transcript \\
+      --columns transcript_id gene_id gene_name -of tsv \\
+      --output tx2gene.tsv
+
+  # Region query selecting non-standard columns — write to Parquet (breaks GTF layout)
+  gff2parquet query gencode.parquet \\
       --region chr1:11869-14409 --strand plus \\
       --columns Chromosome Start End Strand Feature gene_name \\
       --output chr1_region.parquet
@@ -335,7 +374,13 @@ examples:
         "--columns",
         nargs="+",
         metavar="COL",
-        help="Columns to include in the output (reads all by default)",
+        help=(
+            "Columns to include in the output (reads all by default). "
+            "For gtf/gff3/bed output the core columns are always included and any "
+            "core columns listed here are ignored; the selection then filters "
+            "attribute/optional columns only. Use parquet/tsv/csv output to break "
+            "from the fixed gtf/gff3/bed column layout."
+        ),
     )
     query_parser.add_argument(
         "--output",
@@ -344,13 +389,24 @@ examples:
         help="Output file path. Omit to write to stdout.",
     )
     query_parser.add_argument(
-        "--format",
-        choices=["gtf", "gff3", "parquet"],
+        "-of",
+        "--output-format",
+        dest="output_format",
+        choices=["gtf", "gff3", "bed", "tsv", "csv", "parquet"],
         metavar="FORMAT",
         help=(
-            "Output format: gtf, gff3, or parquet. "
+            "Output format: gtf, gff3, bed, tsv, csv, or parquet. "
             "Auto-detected from --output extension when omitted; "
             "defaults to the source format stored in Parquet metadata (fallback: gtf)."
+        ),
+    )
+    query_parser.add_argument(
+        "--xsv-zero-based",
+        dest="xsv_zero_based",
+        action="store_true",
+        help=(
+            "Emit BED-like 0-based Start coordinates for tsv/csv output "
+            "(default is 1-based, as stored). Ignored for other formats."
         ),
     )
     query_parser.add_argument(
