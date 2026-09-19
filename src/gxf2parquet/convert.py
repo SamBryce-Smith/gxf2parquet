@@ -10,7 +10,7 @@ import pyranges1 as pr
 from .schema import BASE_PRESET, SchemaPreset
 
 #: Metadata key used to record the source annotation format.
-METADATA_SOURCE_FORMAT = b"gff2parquet.source_format"
+METADATA_SOURCE_FORMAT = b"gxf2parquet.source_format"
 
 
 def detect_format(path: Path) -> str:
@@ -59,7 +59,7 @@ def _convert_to_parquet(
         compression: Compression codec ('zstd', 'snappy', 'gzip', 'none').
         source_format: Source annotation format (``'gtf'`` or ``'gff3'``), stored
             in the Parquet file-level metadata under
-            ``gff2parquet.source_format``.
+            ``gxf2parquet.source_format``.
     """
     # Convert pyranges coordinates (0-based, half-open) to GTF/GFF coordinates (1-based, closed)
     # pyranges Start is 0-based, GTF/GFF is 1-based

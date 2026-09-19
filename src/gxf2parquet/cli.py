@@ -216,7 +216,7 @@ def _cmd_query(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     """Main entry point for the CLI."""
     parser = argparse.ArgumentParser(
-        prog="gff2parquet",
+        prog="gxf2parquet",
         description="Convert and query GFF/GTF annotation files in Parquet format.",
     )
 
@@ -235,17 +235,17 @@ def main(argv: list[str] | None = None) -> int:
         epilog="""\
 examples:
   # GENCODE GTF (default preset)
-  gff2parquet build gencode.v47.annotation.gtf.gz gencode.parquet
+  gxf2parquet build gencode.v47.annotation.gtf.gz gencode.parquet
 
   # Partition by Chromosome and Feature for faster region/feature queries
-  gff2parquet build gencode.v47.annotation.gtf.gz gencode.parquet \\
+  gxf2parquet build gencode.v47.annotation.gtf.gz gencode.parquet \\
       --partition-cols Chromosome Feature
 
   # Ensembl GTF with matching preset
-  gff2parquet build Homo_sapiens.GRCh38.113.gtf.gz ensembl.parquet --preset ensembl
+  gxf2parquet build Homo_sapiens.GRCh38.113.gtf.gz ensembl.parquet --preset ensembl
 
   # GFF3 input (auto-detected), snappy compression
-  gff2parquet build Homo_sapiens.GRCh38.113.gff3.gz ensembl.parquet \\
+  gxf2parquet build Homo_sapiens.GRCh38.113.gff3.gz ensembl.parquet \\
       --preset ensembl --compression snappy
 """,
     )
@@ -290,7 +290,7 @@ examples:
         epilog="""\
 examples:
   # All genes on chr1, written as GTF to stdout
-  gff2parquet query gencode.parquet --region chr1 --filter Feature eq gene
+  gxf2parquet query gencode.parquet --region chr1 --filter Feature eq gene
 
   # Region query with strand, keep a couple of attribute columns, write to GTF file.
   # Core GTF columns are always included; --columns filters attributes only.
@@ -317,18 +317,18 @@ examples:
       --output chr1_region.parquet
 
   # Per-region strand: chr1 plus-strand, chr2 minus-strand
-  gff2parquet query gencode.parquet \\
+  gxf2parquet query gencode.parquet \\
       --region chr1 --region chr2 \\
       --strand plus --strand minus
 
   # Filter by feature set and gene type (space-separated values for isin)
-  gff2parquet query gencode.parquet \\
+  gxf2parquet query gencode.parquet \\
       --filter Feature isin exon CDS \\
       --filter gene_type eq protein_coding \\
       --output coding_exons.parquet
 
   # Whole chromosome, GFF3 output
-  gff2parquet query gencode.parquet --region chr2 --output chr2.gff3
+  gxf2parquet query gencode.parquet --region chr2 --output chr2.gff3
 """,
     )
     query_parser.add_argument(

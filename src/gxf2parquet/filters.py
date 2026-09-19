@@ -130,8 +130,7 @@ def parse_filter(tokens: list[str]) -> tuple:
     """
     if len(tokens) < 3:
         raise ValueError(
-            f"Filter requires at least 3 tokens (column op value ...), "
-            f"got: {tokens!r}"
+            f"Filter requires at least 3 tokens (column op value ...), got: {tokens!r}"
         )
 
     col, op, *rest = tokens
@@ -144,9 +143,7 @@ def parse_filter(tokens: list[str]) -> tuple:
 
     if op_lower in ("isin", "notin"):
         if not rest:
-            raise ValueError(
-                f"Operator {op!r} requires at least one value."
-            )
+            raise ValueError(f"Operator {op!r} requires at least one value.")
         parsed_val: list | int | float | str = [_coerce(v) for v in rest]
     else:
         parsed_val = _coerce(rest[0])
