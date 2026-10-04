@@ -60,3 +60,7 @@ column_sets:
 
 # Seed for the gene_set sample (drawn once per annotation, untimed).
 gene_set_seed: 42
+
+# Import gxf2parquet from this source tree instead of the installed copy
+# (empty = installed). compare.sh sets it per side.
+gxf2parquet_src: ""

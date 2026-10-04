@@ -134,6 +134,12 @@ def main() -> int:
         "result_type": type(gr).__name__,
         "n_gene_names": len(gene_names),
     }
+    if args.engine == "gxf2parquet":
+        # Already imported (untimed here): records which source tree was used,
+        # so before/after comparisons can confirm the PYTHONPATH switch worked.
+        import gxf2parquet
+
+        result["gxf2parquet_path"] = str(Path(gxf2parquet.__file__).resolve().parent)
     args.out_json.parent.mkdir(parents=True, exist_ok=True)
     args.out_json.write_text(json.dumps(result, indent=2) + "\n")
     return 0

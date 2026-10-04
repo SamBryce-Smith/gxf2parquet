@@ -1,9 +1,10 @@
 # Annotation sources. Each entry is keyed by the name used in a pipeline
 # config's `annotations:` list and by `pixi run download <name>`.
 #
-# Either `url` (downloaded into data/<name>/ by
-# workflow/scripts/download_annotation.py) or `path` (a local file, relative
-# to the benchmarks/ directory) must be set.
+# Each entry sets one of:
+#   url         downloaded into data/<name>/ by workflow/scripts/download_annotation.py
+#   path        a local file, relative to the benchmarks/ directory
+#   scale_from  another entry, repeated `copies` times (built by the pipeline)
 #
 # Checksums: a download is accepted only if its md5 matches. The expected
 # value is `md5` when pinned; otherwise it is looked up by file name in
@@ -24,4 +25,13 @@ gencode_v50:
 test_gencode:
   path: ../tests/pyranges_data.gencode.gtf.gz
   md5: ""
+  preset: gencode
+
+# Derived: the test GTF above repeated 100x under renamed chromosomes and IDs
+# (~500k rows, 100 "chromosomes"), built by workflow/scripts/make_scaled_gtf.py.
+# Large enough that memory and runtime differences show above Python start-up,
+# with no download. A `chrom: chr1` query selects 1/100 of it.
+test_gencode_x100:
+  scale_from: test_gencode
+  copies: 100
   preset: gencode

@@ -37,9 +37,13 @@ description = "Download + md5-validate the GENCODE v50 comprehensive GTF into da
 depends-on = [{ task = "download", args = ["gencode_v50"] }]
 
 [tasks.smoke]
-description = "Run the full DAG on the small in-repo test GTF"
+description = "Run the full DAG on the in-repo test GTF and a 100x scaled copy (no download)"
 cmd = "./run.sh config/smoke.config.yaml --cores 2"
 
 [tasks.bench]
 description = "Run the full performance benchmark"
 cmd = "./run.sh config/performance.config.yaml"
+
+[tasks.compare]
+description = "Benchmark main vs this checkout on the smoke inputs; writes results-compare/report.md"
+cmd = "./compare.sh"

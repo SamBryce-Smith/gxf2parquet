@@ -39,6 +39,8 @@ rule merge_results:
         build=f"{RESULTS_DIR}/bench_build.tsv",
         query=f"{RESULTS_DIR}/bench_query.tsv",
         disk=f"{RESULTS_DIR}/disk.tsv",
+    params:
+        gxf2parquet_src=GXF2PARQUET_SRC_EFFECTIVE,
     resources:
         bench=1,
     shell:
@@ -46,6 +48,7 @@ rule merge_results:
         python {SCRIPTS}/merge_results.py \
             --host {input.host:q} \
             --run-config {input.run_config:q} \
+            --gxf2parquet-src {params.gxf2parquet_src:q} \
             --build-times {input.build_times:q} \
             --query-times {input.query_times:q} \
             --disk {input.disk:q} \

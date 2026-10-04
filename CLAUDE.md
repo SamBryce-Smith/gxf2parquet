@@ -72,6 +72,9 @@ uv run pytest tests/test_convert.py::TestRoundtrip::test_roundtrip
 
 # Run benchmarks (separate pixi env; see benchmarks/README.md)
 cd benchmarks && pixi run smoke
+
+# Benchmark main vs the working copy; report in benchmarks/results-compare/report.md
+cd benchmarks && pixi run compare
 ```
 
 ## Pre-commit Hooks

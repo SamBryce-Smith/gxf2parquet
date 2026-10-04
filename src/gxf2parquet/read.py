@@ -29,6 +29,28 @@ def read_source_format(parquet_path: str | Path) -> str | None:
     return raw.decode() if isinstance(raw, bytes) else raw
 
 
+def _read_table_to_pandas(
+    parquet_path: str | Path,
+    *,
+    columns: list[str] | None = None,
+    filters: list[tuple] | list[list[tuple]] | None = None,
+) -> pd.DataFrame:
+    """Read Parquet into pandas without holding the Arrow Table and the
+    DataFrame in memory at the same time.
+
+    The Table is never bound to a name, and ``self_destruct=True`` releases
+    each Arrow column as soon as it has been converted (``split_blocks=True``
+    avoids consolidating columns into one large block, which would allocate a
+    second copy). The resulting DataFrame has the same dtypes and values as a
+    plain ``table.to_pandas()``.
+    """
+    return pq.read_table(
+        str(parquet_path),
+        columns=columns,
+        filters=filters,
+    ).to_pandas(split_blocks=True, self_destruct=True)
+
+
 def read_gxf_parquet(
     parquet_path: str | Path,
     *,
@@ -66,17 +88,14 @@ def read_gxf_parquet(
             filters=[("Chromosome", "==", "chr1"), ("Feature", "==", "gene")]
         )
     """
-    table = pq.read_table(
-        str(parquet_path),
-        columns=columns,
-        filters=filters,
-    )
-    df = table.to_pandas()
+    df = _read_table_to_pandas(parquet_path, columns=columns, filters=filters)
 
     if as_pyranges:
         # Convert from 1-based GTF coordinates (stored in Parquet) to 0-based PyRanges coordinates
-        # GTF/GFF are 1-based, but PyRanges uses 0-based coordinates internally
-        df.loc[:, "Start"] = df.Start - 1
+        # GTF/GFF are 1-based, but PyRanges uses 0-based coordinates internally.
+        # Replace the column rather than subtracting in place: after
+        # to_pandas(split_blocks=True) it may be a read-only zero-copy view.
+        df["Start"] = df["Start"] - 1
         return pr.PyRanges(df)
 
     return df

@@ -18,6 +18,7 @@ import csv
 import json
 import platform
 import re
+import subprocess
 import sys
 from importlib import metadata
 from pathlib import Path
@@ -73,6 +74,23 @@ def package_versions() -> dict:
     return out
 
 
+def source_columns(src: str) -> dict:
+    """The gxf2parquet source tree benchmarked and its commit (``-dirty`` when
+    it has uncommitted changes)."""
+    commit = ""
+    if src:
+        try:
+            commit = subprocess.run(
+                ["git", "-C", src, "describe", "--always", "--dirty", "--abbrev=10"],
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout.strip()
+        except (OSError, subprocess.CalledProcessError):
+            commit = ""
+    return {"gxf2parquet_src": src, "gxf2parquet_commit": commit}
+
+
 def host_columns(host_json: str) -> dict:
     with open(host_json) as fh:
         host = json.load(fh)
@@ -114,6 +132,11 @@ def main() -> int:
         required=True,
         help="run_config.json (the resolved Snakemake config)",
     )
+    p.add_argument(
+        "--gxf2parquet-src",
+        default="",
+        help="gxf2parquet source tree that was benchmarked (for provenance columns)",
+    )
     p.add_argument("--build-times", nargs="*", default=[])
     p.add_argument("--query-times", nargs="*", default=[])
     p.add_argument("--disk", nargs="*", default=[], help="disk_usage.py JSON files")
@@ -127,7 +150,12 @@ def main() -> int:
     builds = config["builds"]
     cache_mode = config["cache_mode"]
     naive_input = config.get("naive_input", "gtf")
-    common = {"cache_mode": cache_mode, **package_versions(), **host_columns(args.host)}
+    common = {
+        "cache_mode": cache_mode,
+        **package_versions(),
+        **source_columns(args.gxf2parquet_src),
+        **host_columns(args.host),
+    }
 
     disk_rows = [json.loads(Path(f).read_text()) for f in args.disk]
     disk_bytes = {(r["annotation"], r["artifact"]): r["bytes"] for r in disk_rows}
@@ -173,6 +201,7 @@ def main() -> int:
                 "n_rows": result.get("n_rows"),
                 "n_cols": result.get("n_cols"),
                 "df_mem_bytes": result.get("df_mem_bytes"),
+                "gxf2parquet_path": result.get("gxf2parquet_path", ""),
                 "input_artifact": artifact,
                 "input_bytes": disk_bytes.get((meta["annotation"], artifact)),
                 **common,

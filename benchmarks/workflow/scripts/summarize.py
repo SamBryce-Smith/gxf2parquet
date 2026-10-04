@@ -47,7 +47,7 @@ NUMERIC_COLS = {
 # Constant within a group; carried through from the first replicate.
 CARRY_COLS = {
     "build": ["output_bytes", "output_n_files"],
-    "query": ["n_rows", "n_cols", "input_bytes"],
+    "query": ["n_rows", "n_cols", "input_bytes", "gxf2parquet_path"],
 }
 CARRY_COMMON = [
     "gxf2parquet_version",
@@ -55,6 +55,8 @@ CARRY_COMMON = [
     "pyarrow_version",
     "pandas_version",
     "python_version",
+    "gxf2parquet_src",
+    "gxf2parquet_commit",
     "host_hostname",
     "host_arch",
     "host_cpu_model",

@@ -6,10 +6,10 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-import pyarrow.parquet as pq
 import pyranges1 as pr
 
 from .filters import build_filters
+from .read import _read_table_to_pandas
 
 
 def query_gxf_parquet(
@@ -45,16 +45,13 @@ def query_gxf_parquet(
     parquet_path = Path(parquet_path)
 
     combined = build_filters(regions=regions, strand=strand, extra_filters=filters)
-    table = pq.read_table(
-        str(parquet_path),
-        columns=columns,
-        filters=combined,
-    )
-    df = table.to_pandas()
+    df = _read_table_to_pandas(parquet_path, columns=columns, filters=combined)
 
     if as_pyranges:
-        out = df.copy()
-        out["Start"] = out["Start"] - 1
-        return pr.PyRanges(out)
+        # df is a fresh local, so no copy of the whole frame is needed. Replace
+        # the column rather than subtracting in place: after
+        # to_pandas(split_blocks=True) it may be a read-only zero-copy view.
+        df["Start"] = df["Start"] - 1
+        return pr.PyRanges(df)
 
     return df

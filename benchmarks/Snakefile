@@ -47,7 +47,38 @@ for _a in ANNOTATIONS:
     if _a not in ANNOTATION_SOURCES:
         raise SystemExit(f"annotation {_a!r} not defined in {ANNOTATIONS_YAML}")
 
+
+def _staged_closure(names: list[str]) -> list[str]:
+    """Benchmarked annotations plus the sources derived ones are built from."""
+    out: list[str] = []
+    for name in names:
+        chain = []
+        while name is not None and name not in out and name not in chain:
+            if name not in ANNOTATION_SOURCES:
+                raise SystemExit(f"annotation {name!r} not defined in {ANNOTATIONS_YAML}")
+            chain.append(name)
+            name = ANNOTATION_SOURCES[name].get("scale_from")
+        out.extend(reversed(chain))
+    return out
+
+
+# Every annotation that gets staged, and how: fetched (url/path, md5-checked by
+# download_annotation.py) or derived (scale_from: repeat another annotation).
+STAGED_ANNOTATIONS = _staged_closure(ANNOTATIONS)
+DERIVED_ANNOTATIONS = [a for a in STAGED_ANNOTATIONS if ANNOTATION_SOURCES[a].get("scale_from")]
+FETCHED_ANNOTATIONS = [a for a in STAGED_ANNOTATIONS if a not in DERIVED_ANNOTATIONS]
+for _a in DERIVED_ANNOTATIONS:
+    _copies = ANNOTATION_SOURCES[_a].get("copies")
+    if not isinstance(_copies, int) or _copies < 1:
+        raise SystemExit(f"annotation {_a!r}: scale_from needs an integer copies >= 1")
+
 REPLICATES = list(range(1, int(config["replicates"]) + 1))
+
+# Which gxf2parquet source tree the timed rules import. Empty: the copy
+# installed in the pixi env (an editable install of this checkout). Set by
+# compare.sh to benchmark two versions against the same environment.
+GXF2PARQUET_SRC = str(_abs(config["gxf2parquet_src"])) if config.get("gxf2parquet_src") else ""
+GXF2PARQUET_SRC_EFFECTIVE = GXF2PARQUET_SRC or str(WORKDIR.parent / "src")
 
 CACHE_MODE = config.get("cache_mode", "warm")
 if CACHE_MODE not in ("warm", "evict", "drop"):
@@ -202,7 +233,7 @@ def _alternation(names) -> str:
 
 
 wildcard_constraints:
-    annotation=_alternation(ANNOTATIONS),
+    annotation=_alternation(STAGED_ANNOTATIONS),
     build=_alternation(BUILDS),
     engine=_alternation(ENGINES),
     query=_alternation(KNOWN_QUERIES),

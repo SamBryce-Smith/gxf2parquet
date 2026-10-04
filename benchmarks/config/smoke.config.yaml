@@ -1,15 +1,17 @@
 # Smoke-test config: exercises the whole DAG on the ~5k-row test GTF shipped
-# in tests/. A plumbing test (finishes in a minute or two), NOT a meaningful
-# performance benchmark.
+# in tests/ and on a 100x scaled copy of it (~500k rows, built locally, no
+# download). The 5k-row cells are a plumbing test dominated by Python
+# start-up; the scaled cells are large enough to compare code versions
+# (see compare.sh). Neither replaces a real full-annotation run.
 
 annotations_yaml: config/annotations.yaml
-annotations: [test_gencode]
+annotations: [test_gencode, test_gencode_x100]
 
 data_dir: data
 stage_dir: stage-smoke
 results_dir: results-smoke
 
-replicates: 1
+replicates: 3
 cache_mode: warm
 
 builds:
@@ -27,9 +29,13 @@ queries:
   full: [all]
   chrom: [chr1]
   columns: [gene_basic]
-  gene_set: [10, 50]
+  gene_set: [10, 1000]
 
 column_sets:
   gene_basic: [gene_id, gene_name, gene_type]
 
 gene_set_seed: 42
+
+# Import gxf2parquet from this source tree instead of the installed copy
+# (empty = installed). compare.sh sets it per side.
+gxf2parquet_src: ""

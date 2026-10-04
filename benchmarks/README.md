@@ -18,11 +18,16 @@ This directory is not part of the gxf2parquet package or its distributions.
 cd benchmarks
 pixi install                       # conda-forge/bioconda env + editable gxf2parquet from ..
 
-pixi run smoke                     # whole DAG on tests/pyranges_data.gencode.gtf.gz (~5k rows)
+pixi run smoke                     # whole DAG on the in-repo test GTF + a 100x scaled copy
 
 pixi run download-gencode-v50      # download + md5-validate GENCODE v50 into data/
 pixi run bench                     # full benchmark (config/performance.config.yaml)
 ```
+
+`pixi run smoke` runs two annotations: the ~5k-row test GTF (a plumbing check, dominated by
+Python start-up) and `test_gencode_x100`, the same GTF repeated 100× under renamed
+chromosomes and IDs (~500k rows, built locally by `workflow/scripts/make_scaled_gtf.py`).
+The scaled copy is big enough for memory and runtime differences to show, with no download.
 
 `run.sh` wraps `pixi run snakemake` and passes on everything after `--` unchanged
 (targets, `--config` overrides, other Snakemake flags):
@@ -82,6 +87,38 @@ read + filter alone. `n_rows` must agree across engines for each (query, paramet
 `bench_query_summary.tsv` has an `n_rows_consistent` column, and the summary step prints
 a warning when engines disagree.
 
+## Comparing two versions of gxf2parquet
+
+`compare.sh` benchmarks a baseline against your changes and writes a Markdown report:
+
+```bash
+pixi run compare                                   # main vs this checkout (incl. uncommitted changes)
+./compare.sh --before main --replicates 5          # more replicates for tighter calls
+./compare.sh --before v0.1.0 --after my-branch     # two refs
+./compare.sh --config config/performance.config.yaml   # full GENCODE run
+```
+
+How it works:
+
+- `--before` (default `main`) is checked out into a temporary `git worktree`. `--after`
+  is another ref, or, by default, this checkout's `src/` as it is.
+- The current pipeline runs once per side, one side after the other, in the same pixi
+  environment. Only the gxf2parquet source differs: the `gxf2parquet_src` config key puts
+  that tree first on `PYTHONPATH` for the timed builds and queries. Each query records the
+  path it imported gxf2parquet from (`gxf2parquet_path`), and the report checks that each
+  side used the intended tree.
+- `results-compare/{before,after}/` hold the two full result sets.
+  `results-compare/report.md` has the setup and command, a summary, correctness checks
+  and before/after tables:
+  - **correctness checks:** identical row and column counts, identical Parquet sizes, no
+    failed runs;
+  - **build tables:** wall time, peak RSS and output size;
+  - **query tables:** wall time, read+filter time, peak RSS and the in-memory size of the
+    result.
+- A change is called *better* or *worse* only when the before and after min–max ranges
+  over replicates don't overlap; otherwise it is *noise*. The naive `pyranges1` engine runs
+  the same code on both sides and serves as a control for run-to-run variation.
+
 ## Cache mode
 
 Linux keeps recently read file data in RAM (the *page cache*). The first read of a file
@@ -114,8 +151,8 @@ mid-run. The mode used is recorded in the `cache_mode` column of every output ta
 
 ## Annotations and checksums
 
-`config/annotations.yaml` lists each annotation as either a `url` or a local `path`
-(relative to this directory). `workflow/scripts/download_annotation.py` is used both by
+`config/annotations.yaml` lists each annotation as a `url`, a local `path` (relative to
+this directory), or `scale_from` + `copies` (another entry repeated, built by the pipeline). `workflow/scripts/download_annotation.py` is used both by
 `pixi run download <name>` and by the pipeline's staging rule. It:
 
 1. downloads with `curl` to `data/<name>/<file>.partial`;
@@ -133,7 +170,7 @@ Under `results_dir` (default `results/`; the smoke config uses `results-smoke/`)
 
 | file | contents |
 |---|---|
-| `bench_query.tsv` | one row per (annotation, engine, query, param, rep): `wall_s`, `user_s`, `sys_s`, `cpu_percent`, `max_rss_kb`/`max_rss_gb`, `exit_status` (GNU time); `import_s`, `op_wall_s`, `n_rows`, `n_cols`, `df_mem_bytes` (run_query.py); `input_artifact`, `input_bytes`; `cache_mode`; package versions; `host_*` |
+| `bench_query.tsv` | one row per (annotation, engine, query, param, rep); also `gxf2parquet_src`/`gxf2parquet_commit` (source tree benchmarked) and `gxf2parquet_path` (where it was imported from): `wall_s`, `user_s`, `sys_s`, `cpu_percent`, `max_rss_kb`/`max_rss_gb`, `exit_status` (GNU time); `import_s`, `op_wall_s`, `n_rows`, `n_cols`, `df_mem_bytes` (run_query.py); `input_artifact`, `input_bytes`; `cache_mode`; package versions; `host_*` |
 | `bench_build.tsv` | one row per (annotation, build, rep): `partition_cols`, `compression`, GNU time columns, `output_bytes`, `output_n_files`, versions, `host_*` |
 | `disk.tsv` | one row per (annotation, artifact): `artifact` is `gtf`, `gtf_gz` or a build name; `bytes`, `n_files` |
 | `bench_{query,build}_summary.tsv` | replicates collapsed to `<metric>_{median,min,max}` plus `rep_count`, `any_failed` (and `n_rows_consistent` for queries) |
@@ -148,9 +185,10 @@ Per-run files are in `results/build/<annotation>/<build>/rep<N>/` and
 ## Layout
 
 ```
+compare.sh        before/after comparison of two gxf2parquet versions
 config/           annotations.yaml, performance + smoke configs
 workflow/rules/   stage.smk, build.smk (build subworkflow), query.smk (query subworkflow), aggregate.smk
-workflow/scripts/ download_annotation.py, cache_prep.py, run_query.py, sample_genes.py,
-                  disk_usage.py, parse_gnu_time.py, host_info.py, merge_results.py,
-                  summarize.py, plot.R
+workflow/scripts/ download_annotation.py, make_scaled_gtf.py, cache_prep.py, run_query.py,
+                  sample_genes.py, disk_usage.py, parse_gnu_time.py, host_info.py,
+                  merge_results.py, summarize.py, compare_report.py, plot.R
 ```

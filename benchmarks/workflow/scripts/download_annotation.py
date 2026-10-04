@@ -179,6 +179,11 @@ def main() -> int:
         )
     entry = annotations[args.name]
 
+    if entry.get("scale_from"):
+        raise SystemExit(
+            f"ERROR: {args.name!r} is derived from {entry['scale_from']!r} "
+            "(scale_from); the pipeline builds it, there is nothing to download"
+        )
     try:
         if entry.get("url"):
             path = fetch_url_entry(args.name, entry, args.outdir, args.force)

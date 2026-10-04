@@ -82,14 +82,20 @@ rule run_query:
         argv_str=lambda w: shlex.join(_query_argv(w)),
         data=_query_data,
         cache_mode=CACHE_MODE,
+        gxf2parquet_src=GXF2PARQUET_SRC,
     threads: 1
     resources:
         bench=100,
     shell:
         r"""
         set -euo pipefail
+        # Optional: import gxf2parquet from another source tree (compare.sh).
+        # Bound to a variable first: an empty {{...:q}} renders as nothing.
+        src={params.gxf2parquet_src:q}
+        if [[ -n "$src" ]]; then export PYTHONPATH="$src${{PYTHONPATH:+:$PYTHONPATH}}"; fi
         mkdir -p "$(dirname {output.time:q})"
         printf '%s\n' {params.argv_str:q} > {log.cmdline:q}
+        if [[ -n "$src" ]]; then echo "# with PYTHONPATH=$src" >> {log.cmdline:q}; fi
         python {SCRIPTS}/cache_prep.py --mode {params.cache_mode} {params.data:q}
         command time -v -o {output.time:q} {params.argv_str} > {log.tool_log:q} 2>&1
         """

@@ -147,29 +147,34 @@ def _cmd_query(args: argparse.Namespace) -> int:
         return 1
 
     try:
+        # gtf/gff3/bed: with --output, pyranges1 streams rows into the open file
+        # instead of building the whole file as one string first. An open handle
+        # (rather than a path) keeps the output plain text whatever the extension,
+        # exactly as before.
         if fmt == "gtf":
-            content = result.to_gtf()
             if output is None:
-                sys.stdout.write(content)
+                sys.stdout.write(result.to_gtf())
             else:
-                output.write_text(content)
+                with open(output, "w") as fh:
+                    result.to_gtf(fh)
         elif fmt == "gff3":
-            content = "##gff-version 3\n" + result.to_gff3()
             if output is None:
-                sys.stdout.write(content)
+                sys.stdout.write("##gff-version 3\n" + result.to_gff3())
             else:
-                output.write_text(content)
+                with open(output, "w") as fh:
+                    fh.write("##gff-version 3\n")
+                    result.to_gff3(fh)
         elif fmt == "bed":
             # keep=True retains non-standard columns as extra fields past the standard 6.
-            content = result.to_bed(keep=True)
             if output is None:
-                sys.stdout.write(content)
+                sys.stdout.write(result.to_bed(keep=True))
             else:
-                output.write_text(content)
+                with open(output, "w") as fh:
+                    result.to_bed(fh, keep=True)
         elif fmt in ("tsv", "csv"):
+            # result is a fresh DataFrame used only here: shift Start without copying.
             df = result
             if args.xsv_zero_based:
-                df = df.copy()
                 df["Start"] = df["Start"] - 1  # 1-based (stored) → 0-based (BED-like)
             sep = "\t" if fmt == "tsv" else ","
             if output is None:
@@ -183,10 +188,15 @@ def _cmd_query(args: argparse.Namespace) -> int:
                 )
                 return 1
             import pandas as pd
-            import pyarrow as pa
             import pyarrow.parquet as pq
 
-            df = pd.DataFrame(result).copy()
+            from .convert import _frame_to_table
+
+            # No .copy(): result is not used again, and replacing Start below only
+            # rebinds that column in df. Dropping result leaves df the sole owner of
+            # the data, so _frame_to_table can release each column as it converts it.
+            df = pd.DataFrame(result)
+            del result
             df["Start"] = df["Start"] + 1  # 0-based PyRanges → 1-based for storage
             missing_core = set(CORE_GXF_COLUMNS) - set(df.columns)
             if missing_core:
@@ -197,7 +207,7 @@ def _cmd_query(args: argparse.Namespace) -> int:
                     UserWarning,
                     stacklevel=2,
                 )
-            table = pa.Table.from_pandas(df, preserve_index=False)
+            table = _frame_to_table(df)
             pq.write_table(
                 table,
                 str(output),

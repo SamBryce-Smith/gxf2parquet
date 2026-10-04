@@ -333,6 +333,9 @@ pixi run smoke
 pixi run download-gencode-v50
 pixi run bench
 
+# Compare main against your working copy (before/after report in results-compare/report.md)
+pixi run compare
+
 # Run only the build or the query subworkflow
 ./run.sh config/performance.config.yaml -- build_all
 ./run.sh config/performance.config.yaml -- query_all

@@ -45,14 +45,20 @@ rule build_parquet:
     params:
         argv_str=lambda w: shlex.join(_build_argv(w)),
         cache_mode=CACHE_MODE,
+        gxf2parquet_src=GXF2PARQUET_SRC,
     threads: 1
     resources:
         bench=100,
     shell:
         r"""
         set -euo pipefail
+        # Optional: import gxf2parquet from another source tree (compare.sh).
+        # Bound to a variable first: an empty {{...:q}} renders as nothing.
+        src={params.gxf2parquet_src:q}
+        if [[ -n "$src" ]]; then export PYTHONPATH="$src${{PYTHONPATH:+:$PYTHONPATH}}"; fi
         mkdir -p {output.parquet:q} "$(dirname {output.time:q})"
         printf '%s\n' {params.argv_str:q} > {log.cmdline:q}
+        if [[ -n "$src" ]]; then echo "# with PYTHONPATH=$src" >> {log.cmdline:q}; fi
         python {SCRIPTS}/cache_prep.py --mode {params.cache_mode} {input.gz:q}
         # `command time` bypasses the bash keyword so we get GNU time (-v / -o).
         command time -v -o {output.time:q} {params.argv_str} > {log.tool_log:q} 2>&1
