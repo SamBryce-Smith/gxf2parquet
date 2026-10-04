@@ -1,0 +1,62 @@
+# Default config for the gxf2parquet benchmark pipeline.
+#
+# Override any key at runtime (Snakemake's --config is forwarded after `--`):
+#   ./run.sh config/performance.config.yaml -- --config cache_mode=evict replicates=5
+
+annotations_yaml: config/annotations.yaml
+# Keys from annotations_yaml to benchmark.
+annotations: [gencode_v50]
+
+# data_dir holds verified downloads (shared with `pixi run download`);
+# stage_dir holds the decompressed GTF, Parquet builds and gene lists;
+# results_dir holds timings, TSVs and plots.
+data_dir: data
+stage_dir: stage
+results_dir: results
+
+# Replicates per timed cell (builds and queries).
+replicates: 3
+
+# Page-cache handling before every timed run (see README.md, "Cache mode"):
+#   warm  - read the inputs once (untimed) so every run starts from RAM
+#   evict - posix_fadvise(DONTNEED) the inputs: cold read, Linux only, no root
+#   drop  - `sync; echo 3 > /proc/sys/vm/drop_caches` via passwordless sudo
+cache_mode: warm
+
+# ---- Build subworkflow ---------------------------------------------------
+# Named parameter sets passed to `gxf2parquet build`. Add entries here to
+# benchmark other parameterisations; no code changes needed. Names must match
+# [A-Za-z0-9_]+ and must not be `gtf` or `gtf_gz`.
+builds:
+  single_zstd:
+    partition_cols: []
+    compression: zstd
+  part_chrom_feature:
+    partition_cols: [Chromosome, Feature]
+    compression: zstd
+
+# ---- Query subworkflow ---------------------------------------------------
+# Builds that are queried (each becomes an engine `gxf2parquet-<build>`,
+# compared against the naive `pyranges1` engine). Defaults to all builds.
+query_builds: [single_zstd, part_chrom_feature]
+
+# Input for the naive engine: the decompressed GTF (`gtf`, fastest naive
+# case) or the downloaded gzip (`gtf_gz`).
+naive_input: gtf
+
+# Query -> list of parameter values. Each (query, value) is one timed cell.
+#   full:     reads everything (value is a placeholder)
+#   chrom:    restrict to one chromosome
+#   columns:  restrict to the core GTF columns + a named column set below
+#   gene_set: gene_name isin N randomly sampled gene names
+queries:
+  full: [all]
+  chrom: [chr1, chr21]
+  columns: [gene_basic]
+  gene_set: [10, 1000]
+
+column_sets:
+  gene_basic: [gene_id, gene_name, gene_type]
+
+# Seed for the gene_set sample (drawn once per annotation, untimed).
+gene_set_seed: 42

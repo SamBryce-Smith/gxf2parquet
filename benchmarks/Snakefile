@@ -1,0 +1,217 @@
+# gxf2parquet benchmark pipeline: top-level Snakefile.
+#
+# Job graph:
+#   stage:  annotation (download + md5) -> annotation.gtf.gz -> annotation.gtf
+#   build subworkflow (target `build_all`):
+#       annotation.gtf.gz -> build_parquet[annotation, build, rep]  (timed)
+#       + disk_usage for the GTF, the gzip and every build
+#   query subworkflow (target `query_all`):
+#       rep1 Parquet builds + GTF -> run_query[annotation, engine, query, param, rep]  (timed)
+#   aggregate: merge -> bench_{build,query}.tsv, disk.tsv -> summaries -> plots
+#
+# Resource semantics: every timed rule reserves bench=100 (the full pool, set
+# by run.sh). Everything else reserves bench=1, so it can run during fill-in
+# but never DURING a timed rule.
+#
+# Structure adapted from fulcrumgenomics/riker benchmark-pipeline (MIT
+# License, Copyright (c) 2026 Fulcrum Genomics LLC).
+
+import re
+from pathlib import Path
+
+import yaml
+
+
+configfile: "config/performance.config.yaml"
+
+
+WORKDIR = Path(workflow.basedir)
+SCRIPTS = WORKDIR / "workflow" / "scripts"
+
+
+def _abs(p: str) -> Path:
+    pp = Path(p)
+    return pp if pp.is_absolute() else WORKDIR / pp
+
+
+ANNOTATIONS_YAML = _abs(config["annotations_yaml"])
+DATA_DIR = _abs(config["data_dir"])
+STAGE_DIR = _abs(config["stage_dir"])
+RESULTS_DIR = _abs(config["results_dir"])
+
+with open(ANNOTATIONS_YAML) as fh:
+    ANNOTATION_SOURCES = yaml.safe_load(fh) or {}
+
+ANNOTATIONS = list(config["annotations"])
+for _a in ANNOTATIONS:
+    if _a not in ANNOTATION_SOURCES:
+        raise SystemExit(f"annotation {_a!r} not defined in {ANNOTATIONS_YAML}")
+
+REPLICATES = list(range(1, int(config["replicates"]) + 1))
+
+CACHE_MODE = config.get("cache_mode", "warm")
+if CACHE_MODE not in ("warm", "evict", "drop"):
+    raise SystemExit(f"cache_mode must be warm|evict|drop, got {CACHE_MODE!r}")
+
+
+# --- Builds ---------------------------------------------------------------
+
+BUILDS = config["builds"]
+for _b in BUILDS:
+    if not re.fullmatch(r"[A-Za-z0-9_]+", _b) or _b in ("gtf", "gtf_gz"):
+        raise SystemExit(f"invalid build name {_b!r}: use [A-Za-z0-9_]+, not gtf/gtf_gz")
+
+QUERY_BUILDS = list(config.get("query_builds") or BUILDS)
+for _b in QUERY_BUILDS:
+    if _b not in BUILDS:
+        raise SystemExit(f"query_builds entry {_b!r} is not defined under builds:")
+
+
+# --- Queries --------------------------------------------------------------
+
+KNOWN_QUERIES = ("full", "chrom", "columns", "gene_set")
+QUERIES = {q: [str(v) for v in vals] for q, vals in (config.get("queries") or {}).items()}
+for _q, _vals in QUERIES.items():
+    if _q not in KNOWN_QUERIES:
+        raise SystemExit(f"unknown query {_q!r}; expected one of {KNOWN_QUERIES}")
+    for _v in _vals:
+        if "/" in _v:
+            raise SystemExit(f"query parameter {_v!r} must not contain '/'")
+for _n in QUERIES.get("gene_set", []):
+    if not _n.isdigit():
+        raise SystemExit(f"gene_set parameters must be integers, got {_n!r}")
+for _cs in QUERIES.get("columns", []):
+    if _cs not in config.get("column_sets", {}):
+        raise SystemExit(f"column set {_cs!r} is not defined under column_sets:")
+
+NAIVE_INPUT = config.get("naive_input", "gtf")
+if NAIVE_INPUT not in ("gtf", "gtf_gz"):
+    raise SystemExit(f"naive_input must be gtf|gtf_gz, got {NAIVE_INPUT!r}")
+
+# Engines: the naive pyranges1 workflow plus one gxf2parquet engine per
+# queried build. Engine names double as path components.
+NAIVE_ENGINE = "pyranges1"
+ENGINES = [NAIVE_ENGINE] + [f"gxf2parquet-{b}" for b in QUERY_BUILDS]
+
+# Gene lists are sampled from the first queried build (any build gives the
+# same gene names).
+GENE_SAMPLE_BUILD = QUERY_BUILDS[0] if QUERY_BUILDS else None
+if QUERIES.get("gene_set") and GENE_SAMPLE_BUILD is None:
+    raise SystemExit("gene_set queries need at least one entry in query_builds")
+
+
+# --- Path helpers ---------------------------------------------------------
+
+def gtf_gz_path(annotation: str) -> str:
+    return f"{STAGE_DIR}/annotations/{annotation}/annotation.gtf.gz"
+
+
+def gtf_path(annotation: str) -> str:
+    return f"{STAGE_DIR}/annotations/{annotation}/annotation.gtf"
+
+
+def build_dir(annotation: str, build: str, rep) -> str:
+    """Snakemake-tracked directory holding one build's output."""
+    return f"{STAGE_DIR}/parquet/{annotation}/{build}/rep{rep}"
+
+
+def build_data(annotation: str, build: str, rep=1) -> str:
+    """The Parquet file (unpartitioned) or dataset directory (partitioned)."""
+    return f"{build_dir(annotation, build, rep)}/data.parquet"
+
+
+def genes_path(annotation: str, n) -> str:
+    return f"{STAGE_DIR}/genes/{annotation}/n{n}.txt"
+
+
+def artifact_path(annotation: str, artifact: str) -> str:
+    """Input file/dir for a disk_usage artifact: gtf, gtf_gz or a build name.
+    Builds are measured on rep1, the copy the query subworkflow reads."""
+    if artifact == "gtf":
+        return gtf_path(annotation)
+    if artifact == "gtf_gz":
+        return gtf_gz_path(annotation)
+    return build_dir(annotation, artifact, 1)
+
+
+def engine_input(annotation: str, engine: str) -> str:
+    if engine == NAIVE_ENGINE:
+        return gtf_path(annotation) if NAIVE_INPUT == "gtf" else gtf_gz_path(annotation)
+    return build_dir(annotation, engine.removeprefix("gxf2parquet-"), 1)
+
+
+# --- DAG fan-out ----------------------------------------------------------
+
+def all_build_targets() -> list[str]:
+    return [
+        f"{RESULTS_DIR}/build/{a}/{b}/rep{r}/time.txt"
+        for a in ANNOTATIONS for b in BUILDS for r in REPLICATES
+    ]
+
+
+def all_disk_targets() -> list[str]:
+    artifacts = ["gtf", "gtf_gz", *BUILDS]
+    return [f"{RESULTS_DIR}/disk/{a}/{art}.json" for a in ANNOTATIONS for art in artifacts]
+
+
+def all_query_targets() -> list[str]:
+    return [
+        f"{RESULTS_DIR}/query/{a}/{e}/{q}/{p}/rep{r}/time.txt"
+        for a in ANNOTATIONS
+        for e in ENGINES
+        for q, params in QUERIES.items()
+        for p in params
+        for r in REPLICATES
+    ]
+
+
+# --- Top-level rules ------------------------------------------------------
+
+PLOTS = [
+    "01_query_wall_time.pdf",
+    "02_query_peak_rss.pdf",
+    "03_ratio_vs_naive.pdf",
+    "04_disk_size.pdf",
+    "05_build_cost.pdf",
+]
+
+
+rule all:
+    input:
+        f"{RESULTS_DIR}/bench_build_summary.tsv",
+        f"{RESULTS_DIR}/bench_query_summary.tsv",
+        f"{RESULTS_DIR}/disk.tsv",
+        [f"{RESULTS_DIR}/plots/{p}" for p in PLOTS],
+
+
+rule build_all:
+    """Build subworkflow only: timed builds + disk sizes."""
+    input:
+        all_build_targets(),
+        all_disk_targets(),
+
+
+rule query_all:
+    """Query subworkflow only: needs just the rep1 copy of each queried build."""
+    input:
+        all_query_targets(),
+
+
+def _alternation(names) -> str:
+    return "|".join(re.escape(n) for n in names) if names else "DOESNOTMATCH"
+
+
+wildcard_constraints:
+    annotation=_alternation(ANNOTATIONS),
+    build=_alternation(BUILDS),
+    engine=_alternation(ENGINES),
+    query=_alternation(KNOWN_QUERIES),
+    param=r"[^/]+",
+    rep=r"\d+",
+    n=r"\d+",
+
+
+include: "workflow/rules/stage.smk"
+include: "workflow/rules/build.smk"
+include: "workflow/rules/query.smk"
+include: "workflow/rules/aggregate.smk"

@@ -21,7 +21,7 @@ src/gxf2parquet/
 └── cli.py            # CLI entry point: gxf2parquet
 
 tests/test_convert.py # 6 test classes, multiple test methods
-benchmarks/benchmark.py # Performance comparison script
+benchmarks/           # Snakemake + pixi benchmark pipeline (see benchmarks/README.md)
 ```
 
 ## API Reference
@@ -70,8 +70,8 @@ uv run pytest
 # Run specific test
 uv run pytest tests/test_convert.py::TestRoundtrip::test_roundtrip
 
-# Run benchmarks
-uv run benchmarks/benchmark.py /path/to/annotations.gtf
+# Run benchmarks (separate pixi env; see benchmarks/README.md)
+cd benchmarks && pixi run smoke
 ```
 
 ## Pre-commit Hooks

@@ -1,0 +1,5 @@
+.pixi/
+.snakemake/
+data/
+stage*/
+results*/

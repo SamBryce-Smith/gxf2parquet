@@ -44,7 +44,6 @@ packages = ["src/gxf2parquet"]
 include = [
     "/src",
     "/tests",
-    "/benchmarks",
 ]
 
 [dependency-groups]

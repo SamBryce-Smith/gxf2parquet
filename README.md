@@ -183,6 +183,8 @@ This ensures compatibility with both the GTF standard and PyRanges conventions.
 
 The benchmark below compares read performance and memory usage between GTF and Parquet formats.
 
+> These figures come from the previous single-script benchmark, which has been replaced by a Snakemake pipeline in [`benchmarks/`](benchmarks/README.md) (see [Benchmarking](#benchmarking)). They will be updated once the pipeline has been run on a full annotation.
+
 Note(SBS): I'm not fully satisfied with the benchmarking workflow as presented here, it is likely to change significantly. Take the figures with a pinch of salt. At the moment, comparisons are deliberately kept 'biased' by comparing to the naive pyranges1 workflow. More appropriate benchmarks would include comparing against other competitors with comparable functionality e.g. tabix, GFFx, gffutils, polars-bio, gff2parquet (UriNeli) etc.).
 
 ### Example: GENCODE v40 chr2 & chr20-22 Subset
@@ -316,20 +318,24 @@ uv run pytest tests/test_convert.py::TestRoundtrip::test_roundtrip
 
 ### Benchmarking
 
+Benchmarks live in [`benchmarks/`](benchmarks/README.md): a Snakemake pipeline in its own
+[pixi](https://pixi.sh) environment (not part of the package or its distributions) that
+measures runtime, peak memory and disk usage of gxf2parquet against the naive pyranges1
+workflow. See [`benchmarks/README.md`](benchmarks/README.md) for methodology and output files.
+
 ```bash
-# Create a smaller subset of multiple chromosomes for testing
-grep 'chr2' gencode.v40.annotation.sorted.gtf > gencode.v40.chr2s.annotation.sorted.gtf
+cd benchmarks
 
-# Run benchmark with filtered reads
-uv run benchmarks/benchmark.py gencode.v40.chr2s.annotation.sorted.gtf --filter-chrom chr2
+# Smoke test on the small GTF shipped in tests/ (no download)
+pixi run smoke
 
-# Run benchmark with region query (e.g., chr2:30000-500000 on + strand)
-uv run benchmarks/benchmark.py gencode.v40.chr2s.annotation.sorted.gtf \
-    --filter-chrom chr2 \
-    --region-chrom chr2 \
-    --region-start 30000 \
-    --region-end 500000 \
-    --region-strand +
+# Download + md5-validate GENCODE v50, then run the full benchmark
+pixi run download-gencode-v50
+pixi run bench
+
+# Run only the build or the query subworkflow
+./run.sh config/performance.config.yaml -- build_all
+./run.sh config/performance.config.yaml -- query_all
 ```
 
 [↑ Back to contents](#contents)

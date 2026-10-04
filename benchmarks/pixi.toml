@@ -1,0 +1,45 @@
+[workspace]
+name = "gxf2parquet-bench"
+channels = ["conda-forge", "bioconda"]
+platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64"]
+description = "Snakemake benchmark pipeline: gxf2parquet vs the naive pyranges1 workflow"
+
+[dependencies]
+python = "3.12.*"
+snakemake-minimal = ">=8.0"
+pyyaml = ">=6"
+pandas = "<3.0.0"
+pyarrow = ">=14.0.0"
+# GNU time gives us wall/user/sys/peak RSS via `-v`. macOS BSD time lacks
+# `-v`, so we always use the conda-forge package's binary explicitly.
+time = "*"
+# Annotation downloads + checksum validation (coreutils provides `md5sum`,
+# which macOS lacks by default).
+curl = "*"
+coreutils = "*"
+gzip = "*"
+# Plotting.
+r-base = ">=4.3"
+r-tidyverse = "*"
+
+[pypi-dependencies]
+pyranges1 = ">=1.3.5"
+# The package under test, installed from this checkout.
+gxf2parquet = { path = "..", editable = true }
+
+[tasks.download]
+description = "Download an annotation listed in config/annotations.yaml and validate its md5"
+args = ["name"]
+cmd = "python workflow/scripts/download_annotation.py --config config/annotations.yaml --name {{ name }}"
+
+[tasks.download-gencode-v50]
+description = "Download + md5-validate the GENCODE v50 comprehensive GTF into data/"
+depends-on = [{ task = "download", args = ["gencode_v50"] }]
+
+[tasks.smoke]
+description = "Run the full DAG on the small in-repo test GTF"
+cmd = "./run.sh config/smoke.config.yaml --cores 2"
+
+[tasks.bench]
+description = "Run the full performance benchmark"
+cmd = "./run.sh config/performance.config.yaml"
