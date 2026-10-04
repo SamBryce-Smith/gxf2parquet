@@ -5,7 +5,7 @@
 
 annotations_yaml: config/annotations.yaml
 # Keys from annotations_yaml to benchmark.
-annotations: [gencode_v50]
+annotations: [gencode_v50_primary_basic]
 
 # data_dir holds verified downloads (shared with `pixi run download`);
 # stage_dir holds the decompressed GTF, Parquet builds and gene lists;
@@ -21,7 +21,7 @@ replicates: 3
 #   warm  - read the inputs once (untimed) so every run starts from RAM
 #   evict - posix_fadvise(DONTNEED) the inputs: cold read, Linux only, no root
 #   drop  - `sync; echo 3 > /proc/sys/vm/drop_caches` via passwordless sudo
-cache_mode: warm
+cache_mode: evict
 
 # ---- Build subworkflow ---------------------------------------------------
 # Named parameter sets passed to `gxf2parquet build`. Add entries here to
@@ -59,4 +59,4 @@ column_sets:
   gene_basic: [gene_id, gene_name, gene_type]
 
 # Seed for the gene_set sample (drawn once per annotation, untimed).
-gene_set_seed: 42
+gene_set_seed: 598
