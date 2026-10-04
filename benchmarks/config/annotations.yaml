@@ -17,7 +17,13 @@ gencode_v50:
   # reference chromosomes.
   url: https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_50/gencode.v50.annotation.gtf.gz
   md5sums_url: https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_50/MD5SUMS
-  md5: ""
+  md5: "2d273848c6068682fabea72fae4896a9"
+  preset: gencode
+
+gencode_v50_primary_basic:
+  url: https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_50/gencode.v50.primary_assembly.basic.annotation.gtf.gz
+  md5sums_url: https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_50/MD5SUMS
+  md5: "4e6bbda4b74c9033d0f1209581c8b97d"
   preset: gencode
 
 # Small GENCODE subset shipped with the test suite (chr1 only, ~5k rows).

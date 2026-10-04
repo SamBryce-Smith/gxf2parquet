@@ -56,7 +56,7 @@ CONFIG_FILE="${CONFIG_FILE:-config/performance.config.yaml}"
 SNAKE_ARGS=(
   --configfile "$CONFIG_FILE"
   --cores "$CORES"
-  --resources bench=100
+  --resources bench=100 mem_mb=14000
   --rerun-incomplete
 )
 if [[ "$DRY_RUN" -eq 1 ]]; then
